@@ -114,7 +114,13 @@ def timestamp(seconds: float) -> str:
     return f"{minutes:02d}:{secs:02d}"
 
 
-def transcribe_audio(audio_path: Path, model_name: str, device: str, compute_type: str) -> tuple[Path, Path]:
+def transcribe_audio(
+    audio_path: Path,
+    model_name: str,
+    device: str,
+    compute_type: str,
+    write_raw: bool,
+) -> Path:
     try:
         import whisperx
     except ImportError as exc:
@@ -141,14 +147,16 @@ def transcribe_audio(audio_path: Path, model_name: str, device: str, compute_typ
         for segment in result["segments"]:
             f.write(f"[{timestamp(segment['start'])}] {segment['text'].strip()}\n")
 
-    raw_path.write_text(
-        " ".join(segment["text"].strip() for segment in result["segments"]),
-        encoding="utf-8",
-    )
+    if write_raw:
+        raw_path.write_text(
+            " ".join(segment["text"].strip() for segment in result["segments"]),
+            encoding="utf-8",
+        )
 
     print(timestamped_path)
-    print(raw_path)
-    return timestamped_path, raw_path
+    if write_raw:
+        print(raw_path)
+    return timestamped_path
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -175,6 +183,7 @@ def add_transcribe_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--model", default="base")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--compute-type", default="int8")
+    parser.add_argument("--raw", action="store_true", help="Also write a plain raw transcript file.")
 
 
 def main() -> int:
@@ -182,10 +191,10 @@ def main() -> int:
     if args.command == "fetch":
         fetch_recording(args.url, args.out_dir)
     elif args.command == "transcribe":
-        transcribe_audio(args.audio, args.model, args.device, args.compute_type)
+        transcribe_audio(args.audio, args.model, args.device, args.compute_type, args.raw)
     elif args.command == "fetch-transcribe":
         audio_path = fetch_recording(args.url, args.out_dir)
-        transcribe_audio(audio_path, args.model, args.device, args.compute_type)
+        transcribe_audio(audio_path, args.model, args.device, args.compute_type, args.raw)
     return 0
 
 

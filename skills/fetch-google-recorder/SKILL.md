@@ -39,13 +39,18 @@ This writes:
 
 ```text
 <audio-stem>.whisperx.txt
-<audio-stem>.whisperx.raw.txt
 ```
 
 The timestamped transcript format is:
 
 ```text
 [MM:SS] transcript text
+```
+
+Add `--raw` only if a plain raw transcript is also needed:
+
+```text
+<audio-stem>.whisperx.raw.txt
 ```
 
 ## Fetch And Transcribe
