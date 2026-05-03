@@ -36,7 +36,7 @@ def ensure_source_line(repo_dir: Path, *, yes: bool = False):
             return
 
     with open(bashrc, "a") as f:
-        f.write(f"\n# Claude dotfiles\n{source_line}\n")
+        f.write(f"\n# AI assistant dotfiles\n{source_line}\n")
     print("Added source line to ~/.bashrc")
 
 

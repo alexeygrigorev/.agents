@@ -1,7 +1,7 @@
 [project]
-name = "claude-dotfiles"
+name = "ai-assistant-dotfiles"
 version = "0.1.0"
-description = "Claude Code dotfiles and setup scripts"
+description = "Shared Claude, Codex, and OpenCode dotfiles and setup scripts"
 requires-python = ">=3.10"
 dependencies = []
 

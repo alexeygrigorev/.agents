@@ -1,0 +1,10 @@
+{
+  "features": {
+    "apps": false
+  },
+  "plugins": {
+    "github@openai-curated": {
+      "enabled": false
+    }
+  }
+}

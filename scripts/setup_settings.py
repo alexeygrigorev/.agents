@@ -76,7 +76,7 @@ def main():
     settings_path.parent.mkdir(parents=True, exist_ok=True)
 
     data = load_json(settings_path)
-    repo_settings = load_json(repo_dir / "settings.json")
+    repo_settings = load_json(repo_dir / "config" / "claude" / "settings.json")
 
     changed = False
 

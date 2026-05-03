@@ -1,14 +1,14 @@
-# Claude Dotfiles
+# AI Assistant Dotfiles
 
-Bootstrap and configure [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (and [OpenCode](https://opencode.ai/)) with shared skills, commands, aliases, and settings.
+Bootstrap and configure [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex](https://developers.openai.com/codex), and [OpenCode](https://opencode.ai/) from one shared repo.
 
-This repo serves as a single place to manage your AI coding assistant setup — clone it, run the installer, and get a consistent environment across machines.
+This repo is the single source of truth for shared skills, aliases, wrappers, and reproducible assistant settings. Clone it once, then configure one assistant target or all of them.
 
 ## Install
 
-Requires [git](https://git-scm.com/) and [uv](https://docs.astral.sh/uv/).
+Requires [git](https://git-scm.com/) and either `python3` or [uv](https://docs.astral.sh/uv/).
 
-**One-liner** (clones and installs):
+**One-liner** (clones and configures all targets):
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/alexeygrigorev/.claude/main/installer.sh | bash
@@ -22,48 +22,58 @@ source ~/.bashrc
 source ~/.bashrc
 ```
 
-The installer will:
+Configure only selected targets:
 
-- Symlink `skills/` and `commands/` into `~/.claude` and `~/.config/opencode` (uses directory junctions on Windows)
-- Add a `source` line to `~/.bashrc` pointing to this repo's `.bashrc` (with confirmation, idempotent)
-- Configure `~/.claude/settings.json` — sets `attribution.commit` to empty string
+```bash
+./configure.sh claude
+./configure.sh codex
+./configure.sh opencode
+./configure.sh claude codex
+./configure.sh all
+```
 
-Since `.bashrc` is sourced from the repo, pulling updates is enough to get new aliases and functions — no need to re-run the installer.
+Use `--yes` to update `~/.bashrc` without prompting:
+
+```bash
+./configure.sh --yes all
+```
+
+## What It Does
+
+- `claude`: symlinks `skills/` into `~/.claude`, then merges `config/claude/settings.json` into `~/.claude/settings.json`
+- `codex`: syncs `config/codex/settings.json` into `~/.codex/config.toml`, then symlinks shared skills into `~/.codex/skills`
+- `opencode`: symlinks `skills/` into `~/.config/opencode`
+- all targets: install CLI wrappers from `bin/` into `~/bin`
+- all targets: add a `source` line to `~/.bashrc` pointing to this repo's `.bashrc`
+
+Since `.bashrc` is sourced from the repo, pulling updates is enough to get new aliases and functions. Re-run `./configure.sh` when target settings or symlinks change.
 
 ## Structure
 
-```
+```text
 .claude/
-├── skills/            # Custom skills (auto-triggered by context)
-├── commands/          # Slash commands (invoked manually)
-├── scripts/           # Python setup scripts (run via uv)
+├── config/
+│   ├── claude/settings.json
+│   └── codex/settings.json
+├── skills/            # Shared skills
+├── scripts/           # Setup scripts
 ├── .bashrc            # Shell aliases and functions
-├── installer.sh       # One-liner (curl | bash) — clones repo + runs configure
-└── configure.sh       # Local setup — symlinks, bashrc, settings
+├── installer.sh       # One-liner: clone/update repo and configure
+└── configure.sh       # Local setup for claude/codex/opencode/all
 ```
 
 ## Skills
 
-Skills are automatically triggered by Claude Code when the context matches their description.
+Skills are shared across Claude Code, Codex, and OpenCode where supported.
 
 | Skill | Description |
 |-------|-------------|
 | `create-github-repo` | Create a new GitHub repo with `gh` and push the current project |
+| `fetch-loom` | Download Loom transcripts and videos |
 | `fetch-youtube` | Fetch YouTube video transcripts for analysis or summarization |
-| `init-library` | Scaffold a new Python library with modern tooling (hatch, pyproject.toml) |
+| `init-library` | Scaffold a new Python library with modern tooling |
+| `jina-reader` | Fetch clean readable content from URLs using Jina Reader |
 | `release` | Release to PyPI and GitHub with version bumping and release notes |
-
-## Commands
-
-Commands are invoked manually via `/command-name` in Claude Code.
-
-Note: adding new commands is not recommended. Prefer skills instead, because commands are not universally supported across tools, while skills can be shared across Claude Code, Codex, and other setups more reliably.
-
-| Command | Description |
-|---------|-------------|
-| `/create-github-repo` | Create a new GitHub repo with `gh` and push the current project |
-| `/init-library` | Scaffold a new Python library with modern tooling (hatch, pyproject.toml) |
-| `/release` | Release to PyPI and GitHub with version bumping and release notes |
 
 ## Bash Aliases
 
@@ -72,22 +82,19 @@ Available after sourcing `.bashrc`:
 | Alias | Command |
 |-------|---------|
 | `c` | `claude` |
-| `cc` | `claude -c` (continue last conversation) |
+| `cc` | `claude -c` |
 | `csp` | `claude --dangerously-skip-permissions` |
 | `ccsp` | `claude -c --dangerously-skip-permissions` |
+| `cy` | `codex --dangerously-bypass-approvals-and-sandbox` |
 
 ### Functions
 
-- `claude_init` — Copy the shared `CLAUDE.md` template into the current directory to bootstrap a new project
+- `claude_init` - copy the shared `CLAUDE.md` template into the current directory
+- `codex_sync_config` - sync repo-managed Codex settings into `~/.codex/config.toml`
+- `codex_sync_skills` - sync shared skills into `~/.codex/skills`
 
-## OpenCode Compatibility
-
-The installer symlinks skills and commands into `~/.config/opencode` as well, so they work with both Claude Code and OpenCode out of the box.
-
-## Adding New Skills and Commands
+## Adding New Assets
 
 - Skills: create a folder in `skills/` with a `SKILL.md` frontmatter file and any supporting scripts
-- Prefer skills for new workflows. They are more portable across assistants and work with the Codex bridge too.
-- Commands: add a markdown file to `commands/` with instructions for Claude to follow
-
-Changes are picked up automatically — no re-install needed since the directories are symlinked.
+- Claude settings: edit `config/claude/settings.json`
+- Codex settings: edit `config/codex/settings.json`

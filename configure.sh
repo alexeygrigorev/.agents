@@ -1,34 +1,142 @@
 #!/bin/bash
-# Install Claude dotfiles
+# Install AI assistant dotfiles
+
+set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
-YES_FLAG=""
+SETUP_BASHRC_ARGS=()
+TARGETS=()
 
-if [[ "${1:-}" == "--yes" ]]; then
-    YES_FLAG="--yes"
+usage() {
+    cat <<'EOF'
+Usage: ./configure.sh [--yes] [all|claude|codex|opencode ...]
+
+Targets:
+  claude    Symlink skills into ~/.claude and sync Claude settings
+  codex     Sync Codex config and shared skills into ~/.codex
+  opencode  Symlink skills into ~/.config/opencode
+  all       Configure every target (default)
+EOF
+}
+
+for arg in "$@"; do
+    case "$arg" in
+        --yes|-y)
+            SETUP_BASHRC_ARGS+=("--yes")
+            ;;
+        --help|-h)
+            usage
+            exit 0
+            ;;
+        all|claude|codex|opencode)
+            TARGETS+=("$arg")
+            ;;
+        *)
+            echo "Error: unknown argument: $arg"
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+if [[ ${#TARGETS[@]} -eq 0 ]]; then
+    TARGETS=(all)
 fi
 
-# Create symlinks for ~/.claude and ~/.config/opencode
-TARGETS=(~/.claude ~/.config/opencode)
+has_target() {
+    local wanted="$1"
+    local target
+    for target in "${TARGETS[@]}"; do
+        if [[ "$target" == "all" || "$target" == "$wanted" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
 
-for TARGET_DIR in "${TARGETS[@]}"; do
-    mkdir -p "$TARGET_DIR"
-
-    if [[ "$OS" == "Windows_NT" ]]; then
-        echo "Creating directory junctions in $TARGET_DIR on Windows..."
-        WIN_REPO=$(cygpath -w "$REPO_DIR")
-        WIN_TARGET=$(cygpath -w "$TARGET_DIR")
-
-        rm -rf "$TARGET_DIR/skills" "$TARGET_DIR/commands"
-
-        cmd.exe //c "mklink /J ${WIN_TARGET}\\skills ${WIN_REPO}\\skills" 2>/dev/null
-        cmd.exe //c "mklink /J ${WIN_TARGET}\\commands ${WIN_REPO}\\commands" 2>/dev/null
-    else
-        echo "Creating symlinks in $TARGET_DIR..."
-        ln -sf "$REPO_DIR/skills" "$TARGET_DIR/skills"
-        ln -sf "$REPO_DIR/commands" "$TARGET_DIR/commands"
+run_python() {
+    if command -v python3 >/dev/null 2>&1; then
+        python3 "$@"
+        return
     fi
-done
+
+    if command -v uv >/dev/null 2>&1; then
+        uv run --no-project python "$@"
+        return
+    fi
+
+    echo "Error: python3 or uv is required."
+    exit 1
+}
+
+link_shared_dirs() {
+    local target_dir="$1"
+    mkdir -p "$target_dir"
+
+    if [[ "${OS:-}" == "Windows_NT" ]]; then
+        echo "Creating directory junctions in $target_dir on Windows..."
+        local win_repo win_target
+        win_repo=$(cygpath -w "$REPO_DIR")
+        win_target=$(cygpath -w "$target_dir")
+
+        rm -rf "$target_dir/skills"
+        remove_managed_commands "$target_dir"
+
+        cmd.exe //c "mklink /J ${win_target}\\skills ${win_repo}\\skills" 2>/dev/null
+    else
+        echo "Creating symlinks in $target_dir..."
+        ensure_symlink "$REPO_DIR/skills" "$target_dir/skills"
+        remove_managed_commands "$target_dir"
+    fi
+}
+
+ensure_symlink() {
+    local source="$1"
+    local target="$2"
+    local current
+
+    if [[ -L "$target" ]]; then
+        current="$(readlink -f "$target")"
+        if [[ "$current" == "$source" ]]; then
+            return
+        fi
+        rm "$target"
+    elif [[ -e "$target" ]]; then
+        echo "WARNING: $target exists and is not a symlink; leaving it unchanged."
+        return
+    fi
+
+    ln -s "$source" "$target"
+}
+
+remove_managed_commands() {
+    local target_dir="$1"
+    local target="$target_dir/commands"
+
+    if [[ -L "$target" ]]; then
+        local current
+        current="$(readlink -f "$target")"
+        if [[ "$current" == "$REPO_DIR/commands" || ! -e "$current" ]]; then
+            rm "$target"
+            echo "Removed legacy commands symlink: $target"
+        fi
+    fi
+}
+
+if has_target claude; then
+    link_shared_dirs "$HOME/.claude"
+    run_python "$REPO_DIR/scripts/setup_settings.py"
+fi
+
+if has_target opencode; then
+    link_shared_dirs "$HOME/.config/opencode"
+fi
+
+if has_target codex; then
+    mkdir -p "$HOME/.codex"
+    run_python "$REPO_DIR/scripts/setup_codex_config.py"
+    run_python "$REPO_DIR/scripts/setup_codex_skills.py"
+fi
 
 # Install CLI wrappers to ~/bin
 mkdir -p "$HOME/bin"
@@ -50,8 +158,7 @@ elif [[ "$(command -v gh)" != "$HOME/bin/gh" ]]; then
     echo '  export PATH="$HOME/bin:$PATH"'
 fi
 
-# Setup bashrc source line and settings.json
-uv run --no-project python "$REPO_DIR/scripts/setup_bashrc.py" $YES_FLAG
-uv run --no-project python "$REPO_DIR/scripts/setup_settings.py"
+# Setup bashrc source line
+run_python "$REPO_DIR/scripts/setup_bashrc.py" "${SETUP_BASHRC_ARGS[@]}"
 
 echo "Installation complete. Run 'source ~/.bashrc' to apply changes."

@@ -7,6 +7,6 @@ exclude-newer = "2026-03-21T03:49:07.091755326Z"
 exclude-newer-span = "P7D"
 
 [[package]]
-name = "claude-dotfiles"
+name = "ai-assistant-dotfiles"
 version = "0.1.0"
 source = { virtual = "." }
