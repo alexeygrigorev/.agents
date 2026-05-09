@@ -9,6 +9,32 @@ argument-hint: [video-url-or-id]
 
 Fetch the transcript/subtitles of a YouTube video and return it as timestamped text.
 
+## Fetching a playlist
+
+To get all video IDs and titles from a playlist:
+
+```bash
+python3 ~/.claude/skills/fetch-youtube/playlist.py <playlist-id-or-url>
+```
+
+Example:
+
+```bash
+python3 ~/.claude/skills/fetch-youtube/playlist.py PL3MmuxUbc_hIB4fSqLy_0AfTjVLpgjV3R
+```
+
+Output (tab-separated: video ID and title):
+
+```
+FgnelhEJFj0	LLM Zoomcamp 2025 Launch Stream
+Q75JgLEXMsM	LLM Zoomcamp 1.1 – Einführung in LLM und RAG
+...
+```
+
+Note: this only fetches the first page of results (typically the first ~100 videos). For longer playlists with pagination, the script would need to be extended.
+
+## Fetching a single video transcript
+
 ## Requirements
 
 Ensure `youtube-transcript-api` is installed:
