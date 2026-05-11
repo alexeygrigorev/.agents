@@ -130,6 +130,7 @@ fi
 
 if has_target opencode; then
     link_shared_dirs "$HOME/.config/opencode"
+    run_python "$REPO_DIR/scripts/setup_opencode_config.py"
 fi
 
 if has_target codex; then

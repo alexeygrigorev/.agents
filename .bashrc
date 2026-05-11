@@ -36,6 +36,19 @@ codex_sync_skills() {
   fi
 }
 
+oc() {
+  local env_file="$AI_DOTFILES_DIR/config/opencode/env_unset.txt"
+  local unset_args=()
+
+  if [[ -f "$env_file" ]]; then
+    while IFS= read -r var; do
+      [[ -n "$var" && "$var" != \#* ]] && unset_args+=(-u "$var")
+    done < "$env_file"
+  fi
+
+  env "${unset_args[@]}" opencode "$@"
+}
+
 claude_init() {
   local src="$CLAUDE_DOTFILES_DIR/CLAUDE.md"
   local dest="$PWD/CLAUDE.md"
