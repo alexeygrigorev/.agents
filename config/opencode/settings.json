@@ -4,7 +4,8 @@
     "external_directory": {
       "~/git/**": "allow",
       "~/tmp/**": "allow",
-      "/data/**": "allow"
+      "/data/**": "allow",
+      "/tmp/**": "allow"
     }
   }
 }

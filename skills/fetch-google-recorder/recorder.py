@@ -18,6 +18,30 @@ def read_url(url: str, data: bytes | None = None, headers: dict[str, str] | None
         return res.read(), dict(res.headers), res.status
 
 
+def read_ranged_url(url: str, chunk_size: int = 8 * 1024 * 1024) -> tuple[bytes, dict[str, str]]:
+    """Read downloads whose server only returns one range-sized chunk by default."""
+    first_chunk, headers, status = read_url(url, headers={"Range": f"bytes=0-{chunk_size - 1}"})
+    content_range = headers.get("Content-Range")
+    if status != 206 or not content_range:
+        return first_chunk, headers
+
+    match = re.search(r"/(\d+)$", content_range)
+    if not match:
+        return first_chunk, headers
+    total_size = int(match.group(1))
+
+    chunks = [first_chunk]
+    offset = len(first_chunk)
+    while offset < total_size:
+        end = min(offset + chunk_size - 1, total_size - 1)
+        chunk, _, _ = read_url(url, headers={"Range": f"bytes={offset}-{end}"})
+        chunks.append(chunk)
+        offset += len(chunk)
+        if not chunk:
+            raise RuntimeError(f"download stopped before {total_size} bytes")
+    return b"".join(chunks), headers
+
+
 def safe_name(value: str) -> str:
     value = value.lower().strip()
     value = re.sub(r"[^a-z0-9]+", "_", value)
@@ -68,7 +92,7 @@ def fetch_recording(recorder_url: str, out_dir: Path) -> Path:
     title = "google_recorder_" + safe_name(info[0][1] if info and info[0] else share_id)
 
     audio_url = f"{download_base}/download/playback/{share_id}"
-    audio_raw, audio_headers, _ = read_url(audio_url)
+    audio_raw, audio_headers = read_ranged_url(audio_url)
     audio_ext = ".m4a" if "audio/mp4" in audio_headers.get("Content-Type", "") else ".audio"
     audio_path = out_dir / f"{title}{audio_ext}"
     audio_path.write_bytes(audio_raw)
