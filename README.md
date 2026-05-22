@@ -74,6 +74,7 @@ Skills are shared across Claude Code, Codex, and OpenCode where supported.
 | `init-library` | Scaffold a new Python library with modern tooling |
 | `jina-reader` | Fetch clean readable content from URLs using Jina Reader |
 | `release` | Release to PyPI and GitHub with version bumping and release notes |
+| `stylint` | Run and fix prose style checks for docs, lessons, workshops, and agent-written text |
 
 ## Bash Aliases
 
