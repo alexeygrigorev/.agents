@@ -29,7 +29,8 @@ Before starting, ask:
 │   └── __init__.py
 ├── .github/
 │   └── workflows/
-│       └── test.yml
+│       ├── test.yml
+│       └── publish.yml
 ├── Makefile
 ├── pyproject.toml
 ├── README.md
@@ -120,7 +121,7 @@ if __name__ == "__main__":
 `Makefile`:
 
 ```makefile
-.PHONY: test setup shell coverage publish-build publish-test publish publish-clean
+.PHONY: test setup shell coverage publish-build publish-clean release
 
 test:
 	uv run pytest
@@ -137,15 +138,71 @@ coverage:
 publish-build:
 	uv run hatch build
 
-publish-test:
-	uv run hatch publish --repo test
-
-publish:
-	uv run hatch publish
-
 publish-clean:
 	rm -r dist/
+
+# Release: tag the current version and push to trigger CI publish.
+# CI workflow: .github/workflows/publish.yml (on tag push v*)
+release:
+	@VERSION=$$(grep -E "^__version__" <library_name>/__version__.py | sed -E "s/.*['\"]([^'\"]+)['\"].*/\1/"); \
+	echo "Releasing v$$VERSION"; \
+	git tag "v$$VERSION"; \
+	git push origin "v$$VERSION"
 ```
+
+`.github/workflows/publish.yml`:
+
+```yaml
+name: Publish
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+      - run: uv build
+      - name: Verify version matches tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          if ! ls dist/ | grep -qE -- "-${TAG}(-|\.)"; then
+            echo "::error::dist/ contents do not match tag v${TAG}"
+            ls dist/
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v5
+        with:
+          name: dist
+          path: dist/*
+
+  publish-pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: dist
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+```
+
+After the repo is on GitHub, set the PyPI token secret once:
+
+```bash
+PYPI_TOKEN=$(grep "^password" ~/.pypirc | head -1 | sed 's/password = //')
+gh secret set PYPI_API_TOKEN --body "$PYPI_TOKEN"
+```
+
+Releasing then becomes: bump `__version__.py`, commit, push, and `make release` (or `git tag vX.Y.Z && git push origin vX.Y.Z`). See the `release` skill for the full flow including GitHub release notes.
 
 `.python-version`:
 
