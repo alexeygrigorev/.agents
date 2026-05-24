@@ -1,7 +1,6 @@
 ---
 name: init-library
 description: Initialize a new Python library with modern tooling, packaging, tests, and optional CLI support. Use when the user wants to scaffold a new Python package.
-allowed-tools: Bash(uv *), Bash(git *), Bash(make *), Bash(mkdir *), Bash(touch *), Bash(ls *)
 ---
 
 # Init Library

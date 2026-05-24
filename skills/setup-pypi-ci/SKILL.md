@@ -1,7 +1,6 @@
 ---
 name: setup-pypi-ci
 description: Add the standardized CI publish workflow (`.github/workflows/publish.yml` + `make release`) to an existing Python project so PyPI releases happen on tag push. Use when a project still publishes via a local script (`publish.py`, `hatch publish`, `twine upload`) or has no automated publish at all.
-allowed-tools: Bash(git *), Bash(gh *), Bash(uv *), Bash(grep *), Bash(sed *), Bash(rm *), Bash(mkdir *), Bash(ls *), Bash(cat *)
 ---
 
 # Setup PyPI CI
