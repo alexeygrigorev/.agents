@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetch public Google Recorder audio and optionally transcribe it with WhisperX."""
+"""Fetch public Google Recorder transcripts/audio and optionally transcribe audio."""
 
 from __future__ import annotations
 
@@ -79,17 +79,38 @@ def rpc_call(rpc_base: str, api_key: str, method: str, share_id: str):
     return json.loads(raw.decode("utf-8")), raw
 
 
-def fetch_recording(recorder_url: str, out_dir: Path) -> Path:
+def recording_paths(recorder_url: str, out_dir: Path) -> tuple[str, str, str, str]:
     share_id = extract_share_id(recorder_url)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     config = get_client_config()
     api_key = config["apiKey"]
     rpc_base = config["firstPartyApiUrl"]
-    download_base = config["fileDownloadUrl"]
 
     info, _ = rpc_call(rpc_base, api_key, "GetRecordingInfo", share_id)
     title = "google_recorder_" + safe_name(info[0][1] if info and info[0] else share_id)
+    return share_id, title, rpc_base, api_key
+
+
+def fetch_transcript(recorder_url: str, out_dir: Path, print_path: bool = True) -> Path:
+    share_id, title, rpc_base, api_key = recording_paths(recorder_url, out_dir)
+
+    transcript, transcript_raw = rpc_call(rpc_base, api_key, "GetTranscription", share_id)
+    (out_dir / f"{title}.transcription.jsonpb").write_bytes(transcript_raw)
+    transcript_path = out_dir / f"{title}.transcript.txt"
+    write_recorder_transcript(transcript, transcript_path)
+    write_word_timings(transcript, out_dir / f"{title}.words.json")
+
+    if print_path:
+        print(transcript_path)
+    return transcript_path
+
+
+def fetch_recording(recorder_url: str, out_dir: Path) -> Path:
+    share_id, title, _, _ = recording_paths(recorder_url, out_dir)
+
+    config = get_client_config()
+    download_base = config["fileDownloadUrl"]
 
     audio_url = f"{download_base}/download/playback/{share_id}"
     audio_raw, audio_headers = read_ranged_url(audio_url)
@@ -98,10 +119,7 @@ def fetch_recording(recorder_url: str, out_dir: Path) -> Path:
     audio_path.write_bytes(audio_raw)
 
     try:
-        transcript, transcript_raw = rpc_call(rpc_base, api_key, "GetTranscription", share_id)
-        (out_dir / f"{title}.transcription.jsonpb").write_bytes(transcript_raw)
-        write_recorder_transcript(transcript, out_dir / f"{title}.transcript.txt")
-        write_word_timings(transcript, out_dir / f"{title}.words.json")
+        fetch_transcript(recorder_url, out_dir, print_path=False)
     except Exception as exc:
         print(f"Warning: audio fetched, but Recorder transcript fetch failed: {exc}", file=sys.stderr)
 
@@ -187,6 +205,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
+    transcript = subparsers.add_parser(
+        "transcript",
+        help="Fetch the Recorder-provided transcript without downloading audio.",
+    )
+    transcript.add_argument("url")
+    transcript.add_argument("--out-dir", default=".", type=Path)
+
     fetch = subparsers.add_parser("fetch", help="Fetch original .m4a audio from a public Recorder link.")
     fetch.add_argument("url")
     fetch.add_argument("--out-dir", default=".", type=Path)
@@ -212,7 +237,9 @@ def add_transcribe_options(parser: argparse.ArgumentParser) -> None:
 
 def main() -> int:
     args = build_parser().parse_args()
-    if args.command == "fetch":
+    if args.command == "transcript":
+        fetch_transcript(args.url, args.out_dir)
+    elif args.command == "fetch":
         fetch_recording(args.url, args.out_dir)
     elif args.command == "transcribe":
         transcribe_audio(args.audio, args.model, args.device, args.compute_type, args.raw)
