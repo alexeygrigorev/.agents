@@ -26,12 +26,17 @@ from setup_settings import (  # noqa: E402
 ZAI_BASE_URL = "https://api.z.ai/api/anthropic"
 ZAI_API_KEY_URL = "https://z.ai/manage-apikey/apikey-list"
 
-# Z.AI routing + earlier compaction (compact at ~128k instead of full window).
+# Z.AI routing + earlier compaction (compact at ~128k instead of full window)
+# + pin the main model tiers to GLM-5.1 (Z.AI otherwise defaults to GLM-4.6),
+# with the small/fast background tier on the faster GLM-5-Turbo.
 ZLAUDE_ENV = {
     "ANTHROPIC_BASE_URL": ZAI_BASE_URL,
     "API_TIMEOUT_MS": "3000000",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
     "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "128000",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5.1",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.1",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-5-turbo",
 }
 
 
