@@ -32,6 +32,24 @@ def resolve_repo_dir(obj, repo_dir: str):
     return obj
 
 
+def merge_permissions(data: dict, repo_permissions: dict) -> bool:
+    """Union repo permission arrays (allow/deny/ask) into user settings."""
+    changed = False
+    user_permissions = data.setdefault("permissions", {})
+
+    for bucket in ("allow", "deny", "ask"):
+        repo_entries = repo_permissions.get(bucket, [])
+        if not repo_entries:
+            continue
+        user_entries = user_permissions.setdefault(bucket, [])
+        for entry in repo_entries:
+            if entry not in user_entries:
+                user_entries.append(entry)
+                changed = True
+
+    return changed
+
+
 def merge_hooks(data: dict, repo_hooks: dict, repo_dir: str) -> bool:
     """Merge repo hooks into user settings, without duplicating."""
     changed = False
@@ -95,6 +113,15 @@ def main():
             changed = True
         else:
             print(f"  Hooks already up to date")
+
+    # Permissions (allow/deny/ask arrays)
+    repo_permissions = repo_settings.get("permissions", {})
+    if repo_permissions:
+        if merge_permissions(data, repo_permissions):
+            print(f"  Merged permissions into {settings_path}")
+            changed = True
+        else:
+            print(f"  Permissions already up to date")
 
     if changed:
         save_json(settings_path, data)
