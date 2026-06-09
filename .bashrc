@@ -11,11 +11,27 @@ alias ccsp="claude -c --dangerously-skip-permissions"
 alias cy="codex --dangerously-bypass-approvals-and-sandbox"
 
 # zlaude: Claude Code routed to Z.AI via the ~/.zlaude profile
-# (configure with: ./configure.sh zlaude)
-alias zlaude='CLAUDE_CONFIG_DIR="$HOME/.zlaude" claude'
-alias z='CLAUDE_CONFIG_DIR="$HOME/.zlaude" claude'
-alias zc='CLAUDE_CONFIG_DIR="$HOME/.zlaude" claude -c'
-alias zsp='CLAUDE_CONFIG_DIR="$HOME/.zlaude" claude --dangerously-skip-permissions'
+# (configure with: ./configure.sh zlaude).
+# Runs claude with a clean env: any ambient ANTHROPIC_* vars (e.g. a project
+# .env's ANTHROPIC_MODEL/API_KEY) override ~/.zlaude/settings.json, so strip
+# them (env -u) and let the profile's settings.json take full control.
+_zlaude_run() {
+  local env_file="$CLAUDE_DOTFILES_DIR/config/claude/zlaude_env_unset.txt"
+  local unset_args=()
+
+  if [[ -f "$env_file" ]]; then
+    while IFS= read -r var; do
+      [[ -n "$var" && "$var" != \#* ]] && unset_args+=(-u "$var")
+    done < "$env_file"
+  fi
+
+  env "${unset_args[@]}" CLAUDE_CONFIG_DIR="$HOME/.zlaude" claude "$@"
+}
+
+zlaude() { _zlaude_run "$@"; }
+z()      { _zlaude_run "$@"; }
+zc()     { _zlaude_run -c "$@"; }
+zsp()    { _zlaude_run --dangerously-skip-permissions "$@"; }
 
 codex_sync_config() {
   local script="$CODEX_DOTFILES_DIR/scripts/setup_codex_config.py"

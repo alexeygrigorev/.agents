@@ -72,6 +72,12 @@ def main():
     for key, value in ZLAUDE_ENV.items():
         env[key] = value
 
+    # Pin the main model to the Opus tier, which maps to glm-5.1 via
+    # ANTHROPIC_DEFAULT_OPUS_MODEL above. Without an explicit selection Claude
+    # Code's implicit startup default bypasses the tier overrides and Z.AI
+    # serves glm-4.6. setdefault preserves any later choice made via /model.
+    data.setdefault("model", "opus")
+
     # Reuse the shared merges so zlaude gets the same hooks/permissions as claude
     ensure_attribution(data)
     repo_hooks = repo_settings.get("hooks", {})

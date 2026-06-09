@@ -1,0 +1,13 @@
+# Ambient ANTHROPIC_* env vars that would override ~/.zlaude/settings.json.
+# The zlaude wrapper functions strip these (env -u) so the profile's
+# settings.json fully controls the model, endpoint, and auth — otherwise a
+# project's .env (e.g. pocketshell's ANTHROPIC_MODEL=glm-4.6) leaks in and
+# silently overrides the configured GLM-5.1 default.
+ANTHROPIC_API_KEY
+ANTHROPIC_AUTH_TOKEN
+ANTHROPIC_BASE_URL
+ANTHROPIC_MODEL
+ANTHROPIC_DEFAULT_OPUS_MODEL
+ANTHROPIC_DEFAULT_SONNET_MODEL
+ANTHROPIC_DEFAULT_HAIKU_MODEL
+ANTHROPIC_SMALL_FAST_MODEL
