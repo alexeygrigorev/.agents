@@ -38,11 +38,33 @@ Use `--yes` to update `~/.bashrc` without prompting:
 ./configure.sh --yes all
 ```
 
+### zlaude (Z.AI-routed Claude)
+
+`zlaude` is an opt-in target that sets up a **separate** Claude Code profile under
+`~/.zlaude` routed to [Z.AI](https://z.ai/) (GLM models) via `ANTHROPIC_BASE_URL`.
+It is **not** part of `all` because it prompts for an API key:
+
+```bash
+./configure.sh zlaude
+```
+
+Every run prompts at the terminal for your Z.AI API key (get one at
+<https://z.ai/manage-apikey/apikey-list>) — it is never read from `.env` or the
+environment. The key is written only into `~/.zlaude/settings.json`. Leaving the
+prompt blank aborts before anything is created, so no partial profile is left
+behind.
+
+The profile gets the same skills, attribution-removal, hooks, and permissions as
+the `claude` target, plus a Z.AI env block (auth token, base URL, and earlier
+auto-compaction at ~128k tokens). Use it via the `z` / `zc` / `zsp` aliases
+(mirroring `c` / `cc` / `csp`), which set `CLAUDE_CONFIG_DIR=~/.zlaude`.
+
 ## What It Does
 
 - `claude`: symlinks `skills/` into `~/.claude`, then merges `config/claude/settings.json` into `~/.claude/settings.json`
 - `codex`: syncs `config/codex/settings.json` into `~/.codex/config.toml`, then symlinks shared skills into `~/.codex/skills`
 - `opencode`: symlinks `skills/` into `~/.config/opencode`
+- `zlaude` (opt-in): prompts for a Z.AI key, then symlinks `skills/` into `~/.zlaude` and writes `~/.zlaude/settings.json` (shared settings + Z.AI env block)
 - all targets: install CLI wrappers from `bin/` into `~/bin`
 - all targets: add a `source` line to `~/.bashrc` pointing to this repo's `.bashrc`
 
@@ -59,7 +81,7 @@ Since `.bashrc` is sourced from the repo, pulling updates is enough to get new a
 ├── scripts/           # Setup scripts
 ├── .bashrc            # Shell aliases and functions
 ├── installer.sh       # One-liner: clone/update repo and configure
-└── configure.sh       # Local setup for claude/codex/opencode/all
+└── configure.sh       # Local setup for claude/codex/opencode/zlaude/all
 ```
 
 ## Skills

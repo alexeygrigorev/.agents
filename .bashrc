@@ -10,6 +10,13 @@ alias csp="claude --dangerously-skip-permissions"
 alias ccsp="claude -c --dangerously-skip-permissions"
 alias cy="codex --dangerously-bypass-approvals-and-sandbox"
 
+# zlaude: Claude Code routed to Z.AI via the ~/.zlaude profile
+# (configure with: ./configure.sh zlaude)
+alias zlaude='CLAUDE_CONFIG_DIR="$HOME/.zlaude" claude'
+alias z='CLAUDE_CONFIG_DIR="$HOME/.zlaude" claude'
+alias zc='CLAUDE_CONFIG_DIR="$HOME/.zlaude" claude -c'
+alias zsp='CLAUDE_CONFIG_DIR="$HOME/.zlaude" claude --dangerously-skip-permissions'
+
 codex_sync_config() {
   local script="$CODEX_DOTFILES_DIR/scripts/setup_codex_config.py"
 
