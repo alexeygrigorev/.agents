@@ -90,24 +90,46 @@ def fetch_transcript_text(video_id: str, retries: int = 3) -> str:
                 raise
 
 
-def fetch_transcript_cached(video_id: str) -> str:
-    """Fetch transcript with local file caching."""
+def fetch_transcript_cached(video_id: str) -> tuple[str, Path, bool]:
+    """Fetch transcript with local file caching.
+
+    Returns (subtitles, cache_file_path, from_cache).
+    """
     cache_dir = Path.home() / ".cache" / "youtube_transcripts"
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache_file = cache_dir / f"{video_id}.txt"
 
     if cache_file.exists():
-        return cache_file.read_text(encoding="utf-8")
+        return cache_file.read_text(encoding="utf-8"), cache_file, True
 
     subtitles = fetch_transcript_text(video_id)
     cache_file.write_text(subtitles, encoding="utf-8")
-    return subtitles
+    return subtitles, cache_file, False
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python youtube.py <video-url-or-id>", file=sys.stderr)
+    argv = sys.argv[1:]
+    flags = {a for a in argv if a.startswith("-")}
+    positional = [a for a in argv if not a.startswith("-")]
+
+    if not positional:
+        print(
+            "Usage: python youtube.py <video-url-or-id> [--path]\n"
+            "  --path  Print only the cache file path (transcript is not sent to stdout).",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
-    video_id = extract_video_id(sys.argv[1])
-    print(fetch_transcript_cached(video_id))
+    video_id = extract_video_id(positional[0])
+    subtitles, cache_file, from_cache = fetch_transcript_cached(video_id)
+
+    line_count = subtitles.count("\n") + 1 if subtitles else 0
+    status = "cached" if from_cache else "fetched"
+    # Always report where the full transcript lives, on stderr, so callers can
+    # read/grep the file directly instead of re-running this command.
+    print(f"{status}: {cache_file} ({line_count} lines)", file=sys.stderr)
+
+    if "--path" in flags:
+        print(cache_file)
+    else:
+        print(subtitles)
