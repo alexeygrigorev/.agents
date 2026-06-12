@@ -1,6 +1,7 @@
 """PreToolUse hook: block destructive commands unless explicitly confirmed."""
 
 import json
+import re
 import shlex
 import sys
 
@@ -14,6 +15,31 @@ DESTRUCTIVE_PATTERNS = [
     ("git push -f", "force push"),
     ("terraform apply", "Terraform apply"),
 ]
+
+# tmux server-wide kills wipe EVERY session on the targeted socket. A bare
+# `tmux kill-server` (no -L/-S) hits the DEFAULT socket = all of the
+# maintainer's live sessions. This destroyed hours of agent work on
+# 2026-06-12. Block the unscoped server-wide kills; allow socket-scoped
+# (`tmux -L foo kill-server` / `tmux -S /path ...`) and targeted
+# (`tmux kill-session -t <name>`) variants.
+TMUX_GUIDANCE = (
+    "wipes ALL sessions on the default tmux socket (destroyed hours of work "
+    "on 2026-06-12). Kill ONE session by name: `tmux kill-session -t <name>`. "
+    "To clear an isolated test server, scope it: `tmux -L <name> kill-server`."
+)
+
+
+def tmux_danger(cleaned: str) -> str | None:
+    """Return a block reason if the command does a server-wide tmux kill on
+    the default socket, else None."""
+    # `tmux ... kill-server` within one command segment (no ; && || pipe
+    # between) that has NO -L/-S socket selector before kill-server.
+    if re.search(r"\btmux\b(?:(?![;&|]|-L\b|-S\b).)*\bkill-server\b", cleaned):
+        return f"`tmux kill-server` on the default socket {TMUX_GUIDANCE}"
+    # pkill / killall targeting tmux nukes the server process directly.
+    if re.search(r"\b(?:pkill|killall)\b[^;&|]*\btmux\b", cleaned):
+        return f"`pkill/killall tmux` {TMUX_GUIDANCE}"
+    return None
 
 
 def strip_quotes(command: str) -> str:
@@ -43,6 +69,17 @@ def main():
 
     command = data.get("tool_input", {}).get("command", "")
     cleaned = strip_quotes(command)
+
+    tmux_reason = tmux_danger(cleaned)
+    if tmux_reason:
+        json.dump(
+            {
+                "decision": "block",
+                "reason": f"Blocked: {tmux_reason}",
+            },
+            sys.stdout,
+        )
+        return
 
     for pattern, description in DESTRUCTIVE_PATTERNS:
         if pattern in cleaned:
