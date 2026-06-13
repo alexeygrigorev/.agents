@@ -1,8 +1,8 @@
 """Configure the 'zlaude' profile: Claude Code routed to Z.AI under ~/.zlaude.
 
 Writes ~/.zlaude/settings.json with the Z.AI env block (auth token, base URL,
-earlier auto-compaction) and reuses the shared hook/permission merges from
-setup_settings.py.
+~512k auto-compaction, GLM-5.2 model tiers) and reuses the shared
+hook/permission merges from setup_settings.py.
 
 The key is always requested interactively at the terminal when you run
 configure — it is never read from .env or the environment. Leaving the prompt
@@ -26,16 +26,17 @@ from setup_settings import (  # noqa: E402
 ZAI_BASE_URL = "https://api.z.ai/api/anthropic"
 ZAI_API_KEY_URL = "https://z.ai/manage-apikey/apikey-list"
 
-# Z.AI routing + earlier compaction (compact at ~128k instead of full window)
-# + pin the main model tiers to GLM-5.1 (Z.AI otherwise defaults to GLM-4.6),
+# Z.AI routing + compaction at ~512k (GLM-5.2 has a 1M-token window, so
+# compact only past the halfway mark rather than the full window)
+# + pin the main model tiers to GLM-5.2 (Z.AI otherwise defaults to GLM-4.6),
 # with the small/fast background tier on the faster GLM-5-Turbo.
 ZLAUDE_ENV = {
     "ANTHROPIC_BASE_URL": ZAI_BASE_URL,
     "API_TIMEOUT_MS": "3000000",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
-    "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "128000",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5.1",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.1",
+    "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "512000",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5.2",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.2",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-5-turbo",
 }
 

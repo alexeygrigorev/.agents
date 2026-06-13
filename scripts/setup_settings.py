@@ -15,10 +15,16 @@ def save_json(path: Path, data: dict):
 
 
 def ensure_attribution(data: dict) -> bool:
-    if data.get("attribution", {}).get("commit", "MISSING") == "MISSING":
-        data.setdefault("attribution", {})["commit"] = ""
-        return True
-    return False
+    """Force attribution.commit and attribution.pr to empty strings (disabled)."""
+    changed = False
+    attr = data.setdefault("attribution", {})
+    if attr.get("commit", "") != "":
+        attr["commit"] = ""
+        changed = True
+    if attr.get("pr", "") != "":
+        attr["pr"] = ""
+        changed = True
+    return changed
 
 
 def resolve_repo_dir(obj, repo_dir: str):
@@ -100,10 +106,10 @@ def main():
 
     # Attribution
     if ensure_attribution(data):
-        print(f"  Set attribution.commit in {settings_path}")
+        print(f"  Set attribution (commit/pr) in {settings_path}")
         changed = True
     else:
-        print(f"  attribution.commit already set")
+        print(f"  Attribution already disabled")
 
     # Hooks
     repo_hooks = repo_settings.get("hooks", {})
