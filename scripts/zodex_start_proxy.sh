@@ -3,30 +3,19 @@ set -euo pipefail
 
 HOST="${ZODEX_PROXY_HOST:-127.0.0.1}"
 PORT="${ZODEX_PROXY_PORT:-18765}"
-URL="http://${HOST}:${PORT}/api/config"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROXY_REPO="${ZODEX_PROXY_REPO:-alexeygrigorev/zai-codex-proxy}"
 PROXY_BIN_DIR="${ZODEX_PROXY_BIN_DIR:-${HOME}/.zodex/bin}"
 PROXY_BIN="${ZODEX_PROXY_BIN:-${PROXY_BIN_DIR}/zai-codex-proxy}"
-ZODEX_DIR="${HOME}/.zodex"
-ENV_FILE="${ZODEX_DIR}/zai.env"
-CONFIG_FILE="${ZODEX_DIR}/codex-proxy/config.json"
-LOG_DIR="${ZODEX_DIR}/log"
-LOG_FILE="${LOG_DIR}/codex-proxy.log"
-
-if curl -fsS "http://${HOST}:${PORT}/ui" >/dev/null 2>&1; then
-  exit 0
-fi
-
-if [[ ! -f "$ENV_FILE" ]]; then
-  echo "zodex profile is missing $ENV_FILE. Run: ${REPO_DIR}/configure.sh zodex" >&2
-  exit 1
-fi
-
-if [[ ! -f "$CONFIG_FILE" ]]; then
-  echo "zodex proxy config is missing $CONFIG_FILE. Run: ${REPO_DIR}/configure.sh zodex" >&2
-  exit 1
-fi
+PROXY_VERSION_FILE="${PROXY_BIN}.version"
+ZODEX_DIR="${ZODEX_DIR:-${HOME}/.zodex}"
+ENV_FILE="${ZODEX_ENV_FILE:-${ZODEX_DIR}/zai.env}"
+CONFIG_FILE="${ZODEX_PROXY_CONFIG_FILE:-${ZODEX_DIR}/codex-proxy/config.json}"
+PID_FILE="${ZODEX_PROXY_PID_FILE:-${ZODEX_DIR}/codex-proxy/proxy.pid}"
+LOG_DIR="${ZODEX_PROXY_LOG_DIR:-${ZODEX_DIR}/log}"
+LOG_FILE="${ZODEX_PROXY_LOG_FILE:-${LOG_DIR}/codex-proxy.log}"
+RESTART_ON_UPDATE="${ZODEX_PROXY_RESTART_ON_UPDATE:-0}"
+PROXY_UPDATED=0
 
 asset_name() {
   local os arch
@@ -59,21 +48,137 @@ asset_name() {
   fi
 }
 
+latest_proxy_tag() {
+  curl -fsSL \
+    -H "Accept: application/vnd.github+json" \
+    "https://api.github.com/repos/${PROXY_REPO}/releases/latest" \
+    | python3 -c 'import json, sys; print(json.load(sys.stdin)["tag_name"])'
+}
+
+installed_proxy_tag() {
+  if [[ -f "$PROXY_VERSION_FILE" ]]; then
+    tr -d '[:space:]' <"$PROXY_VERSION_FILE"
+    return
+  fi
+
+  if [[ -x "$PROXY_BIN" ]]; then
+    local version
+    version="$("$PROXY_BIN" --version 2>/dev/null | awk '{print $NF}')"
+    if [[ -n "$version" ]]; then
+      printf 'v%s\n' "$version"
+    fi
+  fi
+}
+
 install_proxy_binary() {
+  local tag="${1:-}"
   local asset url tmp
   asset="$(asset_name)"
-  url="https://github.com/${PROXY_REPO}/releases/latest/download/${asset}"
+  if [[ -n "$tag" ]]; then
+    url="https://github.com/${PROXY_REPO}/releases/download/${tag}/${asset}"
+  else
+    url="https://github.com/${PROXY_REPO}/releases/latest/download/${asset}"
+  fi
   tmp="${PROXY_BIN}.download"
 
   mkdir -p "$PROXY_BIN_DIR"
   echo "Installing zodex proxy from $url" >&2
-  curl -fL "$url" -o "$tmp"
+  curl -fsSL "$url" -o "$tmp"
   chmod +x "$tmp"
   mv "$tmp" "$PROXY_BIN"
+  if [[ -n "$tag" ]]; then
+    printf '%s\n' "$tag" >"$PROXY_VERSION_FILE"
+  else
+    "$PROXY_BIN" --version 2>/dev/null | awk '{print "v"$NF}' >"$PROXY_VERSION_FILE" || true
+  fi
+  PROXY_UPDATED=1
 }
 
-if [[ ! -x "$PROXY_BIN" ]]; then
-  install_proxy_binary
+ensure_proxy_binary() {
+  local latest_tag installed_tag
+  latest_tag="$(latest_proxy_tag)"
+  installed_tag="$(installed_proxy_tag || true)"
+
+  if [[ ! -x "$PROXY_BIN" ]]; then
+    install_proxy_binary "$latest_tag"
+    return
+  fi
+
+  if [[ -n "$latest_tag" && "$installed_tag" != "$latest_tag" ]]; then
+    echo "Updating zodex proxy from ${installed_tag:-unknown} to ${latest_tag}" >&2
+    install_proxy_binary "$latest_tag"
+  fi
+}
+
+listener_pids() {
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -tiTCP:"$PORT" -sTCP:LISTEN 2>/dev/null || true
+  elif command -v fuser >/dev/null 2>&1; then
+    fuser -n tcp "$PORT" 2>/dev/null || true
+  fi
+}
+
+stop_existing_proxy() {
+  local pids pid
+  pids="$(listener_pids | tr '\n' ' ')"
+
+  if [[ -f "$PID_FILE" ]]; then
+    pid="$(tr -d '[:space:]' <"$PID_FILE")"
+    if [[ -n "$pid" && " $pids " != *" $pid "* ]] && kill -0 "$pid" 2>/dev/null; then
+      pids="${pids} ${pid}"
+    fi
+  fi
+
+  for pid in $pids; do
+    if [[ "$pid" != "$$" ]] && kill -0 "$pid" 2>/dev/null; then
+      echo "Stopping existing zodex proxy process $pid" >&2
+      kill "$pid" 2>/dev/null || true
+    fi
+  done
+
+  for _ in {1..50}; do
+    if ! curl -fsS "http://${HOST}:${PORT}/ui" >/dev/null 2>&1; then
+      rm -f "$PID_FILE"
+      return
+    fi
+    sleep 0.1
+  done
+
+  for pid in $pids; do
+    if [[ "$pid" != "$$" ]] && kill -0 "$pid" 2>/dev/null; then
+      kill -9 "$pid" 2>/dev/null || true
+    fi
+  done
+  rm -f "$PID_FILE"
+}
+
+if curl -fsS "http://${HOST}:${PORT}/ui" >/dev/null 2>&1; then
+  if ensure_proxy_binary; then
+    if [[ "$PROXY_UPDATED" == "0" ]]; then
+      exit 0
+    fi
+    if [[ "$RESTART_ON_UPDATE" == "1" ]]; then
+      stop_existing_proxy
+    else
+      echo "Installed latest zodex proxy binary; keeping already-running proxy on ${HOST}:${PORT}" >&2
+      exit 0
+    fi
+  else
+    echo "Could not check/install latest zodex proxy; using already-running proxy on ${HOST}:${PORT}" >&2
+    exit 0
+  fi
+else
+  ensure_proxy_binary
+fi
+
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "zodex profile is missing $ENV_FILE. Run: ${REPO_DIR}/configure.sh zodex" >&2
+  exit 1
+fi
+
+if [[ ! -f "$CONFIG_FILE" ]]; then
+  echo "zodex proxy config is missing $CONFIG_FILE. Run: ${REPO_DIR}/configure.sh zodex" >&2
+  exit 1
 fi
 
 # shellcheck disable=SC1090
@@ -83,10 +188,15 @@ if [[ -z "${ZAI_API_KEY:-}" ]]; then
   exit 1
 fi
 
-mkdir -p "$LOG_DIR"
-(
-  exec nohup env CODEX_PROXY_ZAI_API_KEY="$ZAI_API_KEY" "$PROXY_BIN" --config "$CONFIG_FILE"
-) >"$LOG_FILE" 2>&1 &
+mkdir -p "$LOG_DIR" "$(dirname "$PID_FILE")"
+if command -v setsid >/dev/null 2>&1; then
+  setsid env CODEX_PROXY_ZAI_API_KEY="$ZAI_API_KEY" "$PROXY_BIN" --config "$CONFIG_FILE" \
+    >"$LOG_FILE" 2>&1 </dev/null &
+else
+  nohup env CODEX_PROXY_ZAI_API_KEY="$ZAI_API_KEY" "$PROXY_BIN" --config "$CONFIG_FILE" \
+    >"$LOG_FILE" 2>&1 </dev/null &
+fi
+printf '%s\n' "$!" >"$PID_FILE"
 
 for _ in {1..50}; do
   if curl -fsS "http://${HOST}:${PORT}/ui" >/dev/null 2>&1; then

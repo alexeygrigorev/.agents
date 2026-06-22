@@ -74,8 +74,13 @@ It writes Codex config to `~/.zodex/config.toml`, proxy config to
 `~/.zodex/codex-proxy/config.json`, and the Z.AI key to `~/.zodex/zai.env` with
 private file permissions. Use it via `zodex`; use `zy` for the same profile with
 Codex's bypass/yolo flag. The startup script checks whether the proxy is already
-running, downloads the latest released `zai-codex-proxy` binary into
-`~/.zodex/bin` if needed, and then starts it.
+running, checks the latest
+[`zai-codex-proxy` release](https://github.com/alexeygrigorev/zai-codex-proxy/releases/latest),
+downloads it into `~/.zodex/bin` when the local binary is missing or older, and
+starts the latest binary when no proxy is already running. If a proxy is already
+serving requests, the script updates the binary on disk but leaves the running
+process alone so active zodex sessions are not disconnected. Set
+`ZODEX_PROXY_RESTART_ON_UPDATE=1` to force an immediate restart after an update.
 
 #### zodex Subagents
 
