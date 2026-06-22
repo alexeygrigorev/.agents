@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from pathlib import Path
 
@@ -104,7 +105,10 @@ def cleanup_old_bridge_state(codex_skills_dir: Path) -> set[str]:
 def main() -> None:
     repo_dir = Path(__file__).resolve().parent.parent
     repo_skills_dir = repo_dir / "skills"
-    codex_skills_dir = Path.home() / ".codex" / "skills"
+    codex_home = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
+    codex_skills_dir = codex_home / "skills"
+    if codex_skills_dir.is_symlink():
+        codex_skills_dir.unlink()
     codex_skills_dir.mkdir(parents=True, exist_ok=True)
 
     state_path = codex_skills_dir / STATE_FILE

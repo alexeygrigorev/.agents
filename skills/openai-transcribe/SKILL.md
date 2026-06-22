@@ -29,7 +29,7 @@ The key is never printed.
 ## Example
 
 ```bash
-python /home/alexey/git/.claude/skills/openai-transcribe/scripts/transcribe.py \
+python /home/alexey/git/.agents/skills/openai-transcribe/scripts/transcribe.py \
   --auto-env \
   --model whisper-1 \
   --language ru \

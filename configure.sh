@@ -9,13 +9,15 @@ TARGETS=()
 
 usage() {
     cat <<'EOF'
-Usage: ./configure.sh [--yes] [all|claude|codex|opencode|zlaude ...]
+Usage: ./configure.sh [--yes] [all|claude|codex|opencode|zlaude|zodex ...]
 
 Targets:
   claude    Symlink skills into ~/.claude and sync Claude settings
   codex     Sync Codex config and shared skills into ~/.codex
   opencode  Symlink skills into ~/.config/opencode
   zlaude    Configure a Z.AI-routed Claude profile under ~/.zlaude
+            (prompts for a Z.AI API key; not included in 'all')
+  zodex     Configure a Z.AI-routed Codex profile under ~/.zodex
             (prompts for a Z.AI API key; not included in 'all')
   all       Configure every target except zlaude (default)
 EOF
@@ -30,7 +32,7 @@ for arg in "$@"; do
             usage
             exit 0
             ;;
-        all|claude|codex|opencode|zlaude)
+        all|claude|codex|opencode|zlaude|zodex)
             TARGETS+=("$arg")
             ;;
         *)
@@ -57,7 +59,7 @@ has_target() {
 }
 
 # Like has_target but does NOT match "all" — for opt-in targets that must be
-# requested by name (e.g. zlaude, which prompts for an API key).
+# requested by name (e.g. zlaude/zodex, which prompt for an API key).
 has_explicit_target() {
     local wanted="$1"
     local target
@@ -159,6 +161,14 @@ if has_explicit_target zlaude; then
     # aborts here before the skills symlink is created, so nothing is left behind.
     run_python "$REPO_DIR/scripts/setup_zlaude.py"
     link_shared_dirs "$HOME/.zlaude"
+fi
+
+if has_explicit_target zodex; then
+    # Prompt for / validate the Z.AI key first. With set -e, a blank prompt
+    # aborts here before the skills symlink is created, so nothing is left behind.
+    run_python "$REPO_DIR/scripts/setup_zodex.py"
+    chmod +x "$REPO_DIR/scripts/zodex_start_proxy.sh"
+    CODEX_HOME="$HOME/.zodex" run_python "$REPO_DIR/scripts/setup_codex_skills.py"
 fi
 
 # Install CLI wrappers to ~/bin

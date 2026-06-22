@@ -1,8 +1,7 @@
 # Shared AI assistant aliases and functions
 
 export AI_DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export CLAUDE_DOTFILES_DIR="$AI_DOTFILES_DIR"
-export CODEX_DOTFILES_DIR="$AI_DOTFILES_DIR"
+export AGENTS_DOTFILES_DIR="$AI_DOTFILES_DIR"
 
 alias c="claude"
 alias cc="claude -c"
@@ -16,7 +15,7 @@ alias cy="codex --dangerously-bypass-approvals-and-sandbox"
 # .env's ANTHROPIC_MODEL/API_KEY) override ~/.zlaude/settings.json, so strip
 # them (env -u) and let the profile's settings.json take full control.
 _zlaude_run() {
-  local env_file="$CLAUDE_DOTFILES_DIR/config/claude/zlaude_env_unset.txt"
+  local env_file="$AGENTS_DOTFILES_DIR/config/claude/zlaude_env_unset.txt"
   local unset_args=()
 
   if [[ -f "$env_file" ]]; then
@@ -33,8 +32,34 @@ z()      { _zlaude_run "$@"; }
 zc()     { _zlaude_run -c "$@"; }
 zsp()    { _zlaude_run --dangerously-skip-permissions "$@"; }
 
+# zodex: Codex routed to Z.AI via the ~/.zodex profile
+# (configure with: ./configure.sh zodex).
+_zodex_run() {
+  local env_file="$AGENTS_DOTFILES_DIR/config/codex/zodex_env_unset.txt"
+  local profile_env="$HOME/.zodex/zai.env"
+  local unset_args=()
+
+  if [[ -f "$env_file" ]]; then
+    while IFS= read -r var; do
+      [[ -n "$var" && "$var" != \#* ]] && unset_args+=(-u "$var")
+    done < "$env_file"
+  fi
+
+  if [[ ! -f "$profile_env" ]]; then
+    echo "zodex is not configured. Run: $AGENTS_DOTFILES_DIR/configure.sh zodex" >&2
+    return 1
+  fi
+
+  "$AGENTS_DOTFILES_DIR/scripts/zodex_start_proxy.sh" || return
+
+  env "${unset_args[@]}" CODEX_HOME="$HOME/.zodex" codex "$@"
+}
+
+zodex() { _zodex_run "$@"; }
+zy()    { _zodex_run --dangerously-bypass-approvals-and-sandbox "$@"; }
+
 codex_sync_config() {
-  local script="$CODEX_DOTFILES_DIR/scripts/setup_codex_config.py"
+  local script="$AGENTS_DOTFILES_DIR/scripts/setup_codex_config.py"
 
   if command -v python3 >/dev/null 2>&1; then
     python3 "$script" >/dev/null 2>&1 || true
@@ -47,7 +72,7 @@ codex_sync_config() {
 }
 
 codex_sync_skills() {
-  local script="$CODEX_DOTFILES_DIR/scripts/setup_codex_skills.py"
+  local script="$AGENTS_DOTFILES_DIR/scripts/setup_codex_skills.py"
 
   if command -v python3 >/dev/null 2>&1; then
     python3 "$script" >/dev/null 2>&1 || true
@@ -73,7 +98,7 @@ oc() {
 }
 
 claude_init() {
-  local src="$CLAUDE_DOTFILES_DIR/CLAUDE.md"
+  local src="$AGENTS_DOTFILES_DIR/CLAUDE.md"
   local dest="$PWD/CLAUDE.md"
 
   if [[ -e "$dest" ]]; then

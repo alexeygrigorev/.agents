@@ -11,7 +11,7 @@ Requires [git](https://git-scm.com/) and either `python3` or [uv](https://docs.a
 **One-liner** (clones and configures all targets):
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/alexeygrigorev/.claude/main/installer.sh | bash
+curl -sSL https://raw.githubusercontent.com/alexeygrigorev/.agents/main/installer.sh | bash
 source ~/.bashrc
 ```
 
@@ -59,10 +59,68 @@ the `claude` target, plus a Z.AI env block (auth token, base URL, and earlier
 auto-compaction at ~128k tokens). Use it via the `z` / `zc` / `zsp` aliases
 (mirroring `c` / `cc` / `csp`), which set `CLAUDE_CONFIG_DIR=~/.zlaude`.
 
+### zodex (Z.AI-routed Codex)
+
+`zodex` is an opt-in target that sets up a **separate** Codex profile under
+`~/.zodex` routed to Z.AI through the
+[`zai-codex-proxy`](https://github.com/alexeygrigorev/zai-codex-proxy)
+Responses-to-Chat bridge on `127.0.0.1:18765`:
+
+```bash
+./configure.sh zodex
+```
+
+It writes Codex config to `~/.zodex/config.toml`, proxy config to
+`~/.zodex/codex-proxy/config.json`, and the Z.AI key to `~/.zodex/zai.env` with
+private file permissions. Use it via `zodex`; use `zy` for the same profile with
+Codex's bypass/yolo flag. The startup script checks whether the proxy is already
+running, downloads the latest released `zai-codex-proxy` binary into
+`~/.zodex/bin` if needed, and then starts it.
+
+#### zodex Subagents
+
+Subagents require two separate pieces to work with Z.AI:
+
+- Codex must expose the collaboration tools. The zodex profile enables
+  `[features.multi_agent_v2]` in `~/.zodex/config.toml`, with
+  `max_concurrent_threads_per_session = 16`, so Codex sends plain tools such as
+  `spawn_agent`, `wait_agent`, `send_message`, and `list_agents`.
+- Z.AI only accepts Chat Completions-style `function` tools. `zai-codex-proxy`
+  keeps Codex's Responses API interface, preserves namespace tool metadata
+  internally, flattens namespace children into Z.AI-compatible function tools,
+  and maps function-call results back into the Responses API shape Codex expects.
+- Codex multi-agent v2 sends task payloads as Responses `agent_message` items
+  whose text is carried in `content[].encrypted_content`. Z.AI cannot interpret
+  that shape directly. `zai-codex-proxy` normalizes both `agent_message` and
+  `agentMessage` into ordinary chat text using the `Message Type: NEW_TASK`
+  envelope expected by Codex's subagent prompt.
+
+Do not solve this by forking Codex. The Codex source is useful for checking the
+wire protocol and dispatcher behavior, but the compatibility layer lives in the
+proxy and the feature flags live in the zodex profile.
+
+Quick verification:
+
+```bash
+zodex exec --skip-git-repo-check \
+  "Spawn exactly one subagent with task_name tiny_math and message: compute 2+2 and reply with exactly 4. Then wait for it. After it completes, reply exactly: FINAL_SUBAGENT_OK"
+```
+
+Expected result: `FINAL_SUBAGENT_OK`. If Codex says no subagent tools are
+available, check `~/.zodex/config.toml` for `[features.multi_agent_v2]`. If Z.AI
+rejects tools, check the latest
+[`zai-codex-proxy` release](https://github.com/alexeygrigorev/zai-codex-proxy/releases).
+
+For a stronger smoke test, run the same profile in a clean directory and ask it
+to spawn five subagents, one each for Python, Rust, JavaScript, Haskell, and Go,
+with each subagent appending a haiku to a shared file. This verifies parallel
+spawn, task delivery, child tool use, wait, and final aggregation.
+
 ## What It Does
 
 - `claude`: symlinks `skills/` into `~/.claude`, then merges `config/claude/settings.json` into `~/.claude/settings.json`
 - `codex`: syncs `config/codex/settings.json` into `~/.codex/config.toml`, then symlinks shared skills into `~/.codex/skills`
+- `zodex`: writes `~/.zodex/config.toml` with multi-agent v2 enabled, stores the Z.AI key in `~/.zodex/zai.env`, configures the local proxy, then syncs shared skills into `~/.zodex/skills`
 - `opencode`: symlinks `skills/` into `~/.config/opencode`
 - `zlaude` (opt-in): prompts for a Z.AI key, then symlinks `skills/` into `~/.zlaude` and writes `~/.zlaude/settings.json` (shared settings + Z.AI env block)
 - all targets: install CLI wrappers from `bin/` into `~/bin`
@@ -73,7 +131,7 @@ Since `.bashrc` is sourced from the repo, pulling updates is enough to get new a
 ## Structure
 
 ```text
-.claude/
+.agents/
 ├── config/
 │   ├── claude/settings.json
 │   └── codex/settings.json
@@ -81,7 +139,7 @@ Since `.bashrc` is sourced from the repo, pulling updates is enough to get new a
 ├── scripts/           # Setup scripts
 ├── .bashrc            # Shell aliases and functions
 ├── installer.sh       # One-liner: clone/update repo and configure
-└── configure.sh       # Local setup for claude/codex/opencode/zlaude/all
+└── configure.sh       # Local setup for claude/codex/opencode/zlaude/zodex/all
 ```
 
 ## Skills

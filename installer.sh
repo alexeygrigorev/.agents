@@ -1,11 +1,11 @@
 #!/bin/bash
 # One-line installer for AI assistant dotfiles
-# Usage: curl -sSL https://raw.githubusercontent.com/alexeygrigorev/.claude/main/installer.sh | bash
+# Usage: curl -sSL https://raw.githubusercontent.com/alexeygrigorev/.agents/main/installer.sh | bash
 
 set -euo pipefail
 
-REPO_URL="https://github.com/alexeygrigorev/.claude.git"
-INSTALL_DIR="$HOME/git/.claude"
+REPO_URL="https://github.com/alexeygrigorev/.agents.git"
+INSTALL_DIR="$HOME/git/.agents"
 CONFIGURE_ARGS=()
 
 for arg in "$@"; do
