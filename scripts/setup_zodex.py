@@ -131,14 +131,9 @@ PROXY_CONFIG_JSON = f"""{{
     "port": {ZODEX_PROXY_PORT},
     "log_level": "INFO"
   }},
-  "providers": {{
-    "zai": {{
-      "type": "zai",
-      "api_url": "{ZAI_CODING_CHAT_URL}",
-      "endpoints": {{}},
-      "allow_authorization_passthrough": false,
-      "models": ["glm-5.2", "glm-5-turbo"]
-    }}
+  "zai": {{
+    "api_url": "{ZAI_CODING_CHAT_URL}",
+    "models": ["glm-5.2", "glm-5-turbo"]
   }},
   "models": {{
     "served": ["glm-5.2", "glm-5-turbo", "compact-default"]
@@ -149,7 +144,6 @@ PROXY_CONFIG_JSON = f"""{{
       "glm-5.2": [
         {{
           "type": "physical",
-          "provider": "zai",
           "model": "glm-5.2",
           "reasoning": {{ "effort": "high" }}
         }}
@@ -157,7 +151,6 @@ PROXY_CONFIG_JSON = f"""{{
       "glm-5-turbo": [
         {{
           "type": "physical",
-          "provider": "zai",
           "model": "glm-5-turbo",
           "reasoning": {{ "effort": "medium" }}
         }}
@@ -165,7 +158,6 @@ PROXY_CONFIG_JSON = f"""{{
       "compact-default": [
         {{
           "type": "physical",
-          "provider": "zai",
           "model": "glm-5-turbo",
           "reasoning": {{ "effort": "none" }}
         }}
