@@ -7,6 +7,7 @@ import getpass
 import json
 import os
 import shlex
+import subprocess
 import sys
 from pathlib import Path
 
@@ -200,9 +201,77 @@ PROXY_CONFIG_JSON = f"""{{
   "compaction": {{
     "temperature": 0.1,
     "preferred_targets": ["compact-default"]
+  }},
+  "retry": {{
+    "enabled": true,
+    "max_attempts": 5,
+    "initial_delay_ms": 1000,
+    "max_delay_ms": 60000,
+    "backoff_multiplier": 2.0
   }}
 }}
 """
+
+
+def extract_model_messages() -> str:
+    """Extract model_messages from the real ~/.codex model catalog.
+
+    Codex registers apply_patch and other built-in tools only when the model
+    catalog entry contains a ``model_messages.instructions_template``. The real
+    Codex catalog (populated by ``codex debug models``) has this, but we must
+    copy it into the Z.AI catalog so Codex treats GLM models the same way.
+
+    Returns a JSON string suitable for embedding as the ``model_messages`` value.
+    Aborts with a clear error if the catalog is unavailable.
+    """
+    codex_home = str(Path.home() / ".codex")
+    try:
+        result = subprocess.run(
+            ["codex", "debug", "models"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            env={**os.environ, "CODEX_HOME": codex_home},
+        )
+    except FileNotFoundError:
+        sys.exit(
+            "Error: 'codex' not found. The zodex profile requires the real "
+            "Codex CLI to be installed so its model catalog (including "
+            "instructions_template for apply_patch) can be extracted."
+        )
+    if result.returncode != 0:
+        sys.exit(
+            f"Error: 'codex debug models' failed (exit {result.returncode}).\n"
+            f"stderr: {result.stderr.strip()}"
+        )
+    try:
+        catalog = json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        sys.exit(f"Error: could not parse 'codex debug models' output as JSON: {exc}")
+
+    # Find a model that has model_messages (prefer gpt-5.5, then any)
+    models = catalog.get("models", [])
+    model_messages = None
+    for model in models:
+        if model.get("slug") == "gpt-5.5" and model.get("model_messages"):
+            model_messages = model["model_messages"]
+            break
+    if model_messages is None:
+        for model in models:
+            if model.get("model_messages"):
+                model_messages = model["model_messages"]
+                break
+
+    if model_messages is None:
+        sys.exit(
+            "Error: no model with 'model_messages' found in the real Codex "
+            "catalog (~/.codex). The zodex profile needs the "
+            "instructions_template from a real Codex model so apply_patch and "
+            "other built-in tools are registered. Make sure Codex is logged in "
+            "and has fetched its model catalog (run 'codex' interactively once)."
+        )
+
+    return json.dumps(model_messages)
 
 
 def read_zlaude_key() -> str:
@@ -263,6 +332,8 @@ def main() -> None:
     proxy_config_path = zodex_dir / "codex-proxy" / "config.json"
     model_catalog_path = zodex_dir / "model-catalogs" / "zai.json"
 
+    model_messages_json = extract_model_messages()
+
     config_path.write_text(
         CONFIG_TOML.replace("__MODEL_CATALOG_JSON__", json.dumps(str(model_catalog_path)))
     )
@@ -270,7 +341,10 @@ def main() -> None:
     proxy_config_path.parent.mkdir(parents=True, exist_ok=True)
     proxy_config_path.write_text(PROXY_CONFIG_JSON)
     model_catalog_path.parent.mkdir(parents=True, exist_ok=True)
-    model_catalog_path.write_text(MODEL_CATALOG_JSON)
+    catalog = json.loads(MODEL_CATALOG_JSON)
+    for model in catalog.get("models", []):
+        model["model_messages"] = json.loads(model_messages_json)
+    model_catalog_path.write_text(json.dumps(catalog, indent=2))
 
     print(f"  Configured zodex profile at {zodex_dir}")
 

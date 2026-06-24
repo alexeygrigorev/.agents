@@ -73,7 +73,16 @@ Responses-to-Chat bridge on `127.0.0.1:18765`:
 It writes Codex config to `~/.zodex/config.toml`, proxy config to
 `~/.zodex/codex-proxy/config.json`, and the Z.AI key to `~/.zodex/zai.env` with
 private file permissions. Use it via `zodex`; use `zy` for the same profile with
-Codex's bypass/yolo flag. The startup script checks whether the proxy is already
+Codex's bypass/yolo flag.
+
+Start or update the proxy manually with:
+
+```bash
+./scripts/zodex_start_proxy.sh
+```
+
+The `zodex` and `zy` wrappers run this command automatically before launching
+Codex. The startup script checks whether the proxy is already
 running, checks the latest
 [`zai-codex-proxy` release](https://github.com/alexeygrigorev/zai-codex-proxy/releases/latest),
 downloads it into `~/.zodex/bin` when the local binary is missing or older, and

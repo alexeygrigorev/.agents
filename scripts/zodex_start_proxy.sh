@@ -137,7 +137,7 @@ stop_existing_proxy() {
   done
 
   for _ in {1..50}; do
-    if ! curl -fsS "http://${HOST}:${PORT}/ui" >/dev/null 2>&1; then
+    if ! curl -fsS "http://${HOST}:${PORT}/health" >/dev/null 2>&1; then
       rm -f "$PID_FILE"
       return
     fi
@@ -152,7 +152,7 @@ stop_existing_proxy() {
   rm -f "$PID_FILE"
 }
 
-if curl -fsS "http://${HOST}:${PORT}/ui" >/dev/null 2>&1; then
+if curl -fsS "http://${HOST}:${PORT}/health" >/dev/null 2>&1; then
   if ensure_proxy_binary; then
     if [[ "$PROXY_UPDATED" == "0" ]]; then
       exit 0
@@ -199,7 +199,7 @@ fi
 printf '%s\n' "$!" >"$PID_FILE"
 
 for _ in {1..50}; do
-  if curl -fsS "http://${HOST}:${PORT}/ui" >/dev/null 2>&1; then
+  if curl -fsS "http://${HOST}:${PORT}/health" >/dev/null 2>&1; then
     exit 0
   fi
   sleep 0.1
