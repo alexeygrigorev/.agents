@@ -34,7 +34,7 @@ apps = false
 enabled = true
 max_concurrent_threads_per_session = 16
 
-[plugins."github@openai-curated"]
+[plugins."github@openai-curated-remote"]
 enabled = false
 
 [model_providers.codex-proxy]

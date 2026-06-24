@@ -3,7 +3,7 @@
     "apps": false
   },
   "plugins": {
-    "github@openai-curated": {
+    "github@openai-curated-remote": {
       "enabled": false
     }
   }
