@@ -99,10 +99,12 @@ def fetch_transcript(recorder_url: str, out_dir: Path, print_path: bool = True) 
     (out_dir / f"{title}.transcription.jsonpb").write_bytes(transcript_raw)
     transcript_path = out_dir / f"{title}.transcript.txt"
     write_recorder_transcript(transcript, transcript_path)
-    write_word_timings(transcript, out_dir / f"{title}.words.json")
+    timestamped_path = out_dir / f"{title}.transcript.timestamped.txt"
+    write_timestamped_transcript(transcript, timestamped_path)
 
     if print_path:
         print(transcript_path)
+        print(timestamped_path)
     return transcript_path
 
 
@@ -138,22 +140,43 @@ def write_recorder_transcript(transcript, path: Path) -> None:
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
-def write_word_timings(transcript, path: Path) -> None:
-    words = []
+def write_timestamped_transcript(transcript, path: Path) -> None:
+    """Write `[HH:MM:SS] text` lines, stamping each line with its first word's start time."""
+    lines: list[tuple[int | None, str]] = []
     for segment in transcript[0] if transcript else []:
+        current = ""
+        current_start: int | None = None
         for word in segment[0] or []:
-            words.append({
-                "word": word[0],
-                "rendered": word[1],
-                "start_ms": int(word[2]),
-                "end_ms": int(word[3]),
-            })
-    path.write_text(json.dumps(words, indent=2), encoding="utf-8")
+            text = str(word[1] if word[1] is not None else word[0])
+            start_ms = int(word[2]) if word[2] is not None else None
+            if text.startswith("\n"):
+                if current.strip():
+                    lines.append((current_start, current.strip()))
+                current = text[1:]
+                current_start = start_ms
+            else:
+                if not current:
+                    current_start = start_ms
+                current += ((" " if current else "") + text)
+        if current.strip():
+            lines.append((current_start, current.strip()))
+
+    rendered = "\n".join(
+        f"[{hms(ms / 1000)}] {text}" if ms is not None else text
+        for ms, text in lines
+    )
+    path.write_text(rendered, encoding="utf-8")
 
 
 def timestamp(seconds: float) -> str:
     minutes, secs = divmod(int(seconds), 60)
     return f"{minutes:02d}:{secs:02d}"
+
+
+def hms(seconds: float) -> str:
+    hours, rem = divmod(int(seconds), 3600)
+    minutes, secs = divmod(rem, 60)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
 
 
 def transcribe_audio(

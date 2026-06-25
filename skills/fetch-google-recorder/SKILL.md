@@ -33,12 +33,17 @@ This writes:
 
 ```text
 <recording-title>.transcript.txt
+<recording-title>.transcript.timestamped.txt
 <recording-title>.transcription.jsonpb
-<recording-title>.words.json
 ```
 
-Use `.transcript.txt` for normal text workflows. Use `.words.json` only
-when word-level timestamps are needed.
+Use `.transcript.txt` for normal text workflows. Use
+`.transcript.timestamped.txt` when you need timestamps (e.g. placing
+chapter markers); each line is prefixed with its start time:
+
+```text
+[HH:MM:SS] transcript text
+```
 
 ## Fetch Audio
 
