@@ -70,6 +70,19 @@ installed_proxy_tag() {
   fi
 }
 
+# Return success (0) if version $1 is strictly newer than version $2, else
+# failure (1). Tags may carry an optional leading 'v' (v0.2.3 or 0.2.3) and are
+# compared with version sort. Equal or older is "not newer". Used so a newer
+# local/dev build is never clobbered by an older published tag.
+version_is_newer() {
+  local a="${1#v}" b="${2#v}"
+  [[ -z "$a" || -z "$b" ]] && return 1
+  [[ "$a" == "$b" ]] && return 1
+  local newest
+  newest="$(printf '%s\n%s\n' "$a" "$b" | sort -V | tail -n1)"
+  [[ "$a" == "$newest" ]]
+}
+
 install_proxy_binary() {
   local tag="${1:-}"
   local asset url tmp
@@ -104,7 +117,11 @@ ensure_proxy_binary() {
     return
   fi
 
-  if [[ -n "$latest_tag" && "$installed_tag" != "$latest_tag" ]]; then
+  # Only update when the latest release is strictly newer than what is
+  # installed (or the installed version is unknown). This avoids clobbering a
+  # newer local/dev build — e.g. a binary built from source ahead of the latest
+  # published release — and skips pointless reinstalls when they already match.
+  if [[ -n "$latest_tag" ]] && { [[ -z "$installed_tag" ]] || version_is_newer "$latest_tag" "$installed_tag"; }; then
     echo "Updating zodex proxy from ${installed_tag:-unknown} to ${latest_tag}" >&2
     install_proxy_binary "$latest_tag"
   fi
