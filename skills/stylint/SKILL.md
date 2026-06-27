@@ -1,12 +1,16 @@
 ---
 name: stylint
-description: Run and fix stylint checks for prose, Markdown, lessons, workshops, docs, and agent-written text. Use when editing written content or when the user asks for style, polish, or lint cleanup.
+description: Run and fix stylint checks for user-facing prose such as workshops, lessons, articles, public docs, and publishable agent-written text. Do not use for internal engineering documents, process docs, handoff docs, planning notes, or repo maintenance notes unless the user explicitly asks for prose linting or style polish.
 allowed-tools: Bash(stylint *), Bash(uv run stylint *), Bash(~/git/stylint/install.sh), Bash(cd ~/git/stylint && ./install.sh)
 ---
 
 # Stylint
 
-Use `stylint` when editing prose, Markdown, workshop lessons, docs, or agent-written explanations.
+Use `stylint` when editing user-facing prose, Markdown, workshop lessons, public docs, articles, or publishable agent-written explanations.
+
+Do not use `stylint` for internal engineering documents, process docs, handoff
+docs, planning notes, or repo maintenance notes unless the user explicitly asks
+for prose linting or style polish.
 
 ## Before Editing
 
