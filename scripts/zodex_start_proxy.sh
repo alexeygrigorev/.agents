@@ -49,6 +49,13 @@ asset_name() {
 }
 
 latest_proxy_tag() {
+  # Prefer an authenticated request via `gh api` (5000 req/h token budget) to
+  # avoid the 60 req/h unauthenticated limit that 403s and breaks the launch.
+  if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+    gh api "repos/${PROXY_REPO}/releases/latest" --jq '.tag_name' 2>/dev/null && return
+  fi
+
+  # Fall back to a plain unauthenticated request.
   curl -fsSL \
     -H "Accept: application/vnd.github+json" \
     "https://api.github.com/repos/${PROXY_REPO}/releases/latest" \
@@ -185,7 +192,16 @@ if curl -fsS "http://${HOST}:${PORT}/health" >/dev/null 2>&1; then
     exit 0
   fi
 else
-  ensure_proxy_binary
+  # Proxy not running. If the update check fails (e.g. GitHub API rate limit),
+  # fall back to an already-installed binary instead of aborting the launch.
+  ensure_proxy_binary || {
+    if [[ -x "$PROXY_BIN" ]]; then
+      echo "Could not check for latest zodex proxy; using installed binary" >&2
+    else
+      echo "Could not install zodex proxy binary (GitHub API unavailable)" >&2
+      exit 1
+    fi
+  }
 fi
 
 if [[ ! -f "$ENV_FILE" ]]; then
