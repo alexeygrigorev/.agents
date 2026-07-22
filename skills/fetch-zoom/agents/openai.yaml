@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fetch Zoom Transcript"
+  short_description: "Fetch transcripts from protected Zoom recordings"
+  default_prompt: "Use $fetch-zoom to fetch the transcript from this Zoom recording link."

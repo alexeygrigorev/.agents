@@ -164,6 +164,7 @@ Skills are shared across Claude Code, Codex, and OpenCode where supported.
 |-------|-------------|
 | `create-github-repo` | Create a new GitHub repo with `gh` and push the current project |
 | `fetch-loom` | Download Loom transcripts and videos |
+| `fetch-zoom` | Fetch transcripts from passcode-protected Zoom recordings |
 | `fetch-youtube` | Fetch YouTube video transcripts for analysis or summarization |
 | `init-library` | Scaffold a new Python library with modern tooling |
 | `jina-reader` | Fetch clean readable content from URLs using Jina Reader |
