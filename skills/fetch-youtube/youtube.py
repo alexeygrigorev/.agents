@@ -47,8 +47,41 @@ def make_subtitles(transcript) -> str:
     return "\n".join(lines)
 
 
-def _build_proxy_url() -> str | None:
-    """Build Oxylabs proxy URL from env vars. Uses one-time sessions (random IP each request)."""
+def _build_dataimpulse_proxy_url() -> str | None:
+    """Build a DataImpulse proxy URL from environment variables."""
+    user = os.environ.get("DATAIMPULSE_USER")
+    password = os.environ.get("DATAIMPULSE_PASSWORD")
+    configured = any(
+        os.environ.get(name)
+        for name in (
+            "DATAIMPULSE_USER",
+            "DATAIMPULSE_PASSWORD",
+            "DATAIMPULSE_ENDPOINT",
+            "DATAIMPULSE_HOST",
+            "DATAIMPULSE_PORT",
+        )
+    )
+    if not configured:
+        return None
+    if not user or not password:
+        raise ValueError(
+            "DATAIMPULSE_USER and DATAIMPULSE_PASSWORD must be set together"
+        )
+
+    endpoint = os.environ.get("DATAIMPULSE_ENDPOINT")
+    if not endpoint:
+        host = os.environ.get("DATAIMPULSE_HOST", "gw.dataimpulse.com")
+        port = os.environ.get("DATAIMPULSE_PORT", "823")
+        endpoint = f"{host}:{port}"
+    endpoint = endpoint.removeprefix("http://").removeprefix("https://").rstrip("/")
+
+    return (
+        f"http://{quote(user, safe='')}:{quote(password, safe='')}@{endpoint}"
+    )
+
+
+def _build_oxylabs_proxy_url() -> str | None:
+    """Build an Oxylabs proxy URL from env vars."""
     user = os.environ.get("OXYLABS_USER")
     endpoint = os.environ.get("OXYLABS_ENDPOINT")
     password = os.environ.get("OXYLABS_PASSWORD")
@@ -58,9 +91,15 @@ def _build_proxy_url() -> str | None:
     return f"http://{username}:{quote(password, safe='')}@{endpoint}"
 
 
+def _build_proxy_url() -> str | None:
+    """Select the configured proxy, preferring DataImpulse over Oxylabs."""
+    return _build_dataimpulse_proxy_url() or _build_oxylabs_proxy_url()
+
+
 def create_api() -> YouTubeTranscriptApi:
-    """Create YouTubeTranscriptApi instance, with proxy if Oxylabs credentials are set."""
+    """Create the transcript API with the configured proxy, if any."""
     from dotenv import load_dotenv
+
     load_dotenv(Path.home() / ".config" / "youtube" / ".env")
     proxy_url = _build_proxy_url()
 

@@ -63,14 +63,44 @@ Note: only the first page (~100 videos) is returned; longer playlists need pagin
 
 ## Proxy support (if YouTube blocks your IP)
 
-The script auto-loads Oxylabs proxy credentials from `~/.config/youtube/.env` if present and
-retries through the proxy on failure — no extra flags. The `.env` should contain:
+The script auto-loads proxy credentials from `~/.config/youtube/.env` and passes the
+configured proxy to `YouTubeTranscriptApi` — no extra flags. A safe tracked template is
+[`youtube.env.example`](youtube.env.example). Copy it to the local config path, replace
+placeholders locally, and keep the file private:
 
+```bash
+mkdir -p ~/.config/youtube
+cp youtube.env.example ~/.config/youtube/.env
+chmod 600 ~/.config/youtube/.env
 ```
+
+DataImpulse uses the `login:password@hostname:port` format shown in its dashboard:
+
+```dotenv
+DATAIMPULSE_USER=your-dataimpulse-login
+DATAIMPULSE_PASSWORD=your-dataimpulse-password
+DATAIMPULSE_ENDPOINT=gw.dataimpulse.com:823
+```
+
+`DATAIMPULSE_HOST` and `DATAIMPULSE_PORT` may be used instead of
+`DATAIMPULSE_ENDPOINT`; the defaults are `gw.dataimpulse.com` and `823`.
+
+Oxylabs remains supported as a fallback:
+
+```dotenv
 OXYLABS_USER=...
 OXYLABS_ENDPOINT=...
 OXYLABS_PASSWORD=...
 ```
+
+When both providers are configured, DataImpulse takes precedence. If DataImpulse is not
+configured, the existing Oxylabs settings are used. Environment variables already exported
+in the shell are not overwritten by the dotenv file.
+
+Security boundary: the real credentials belong only in `~/.config/youtube/.env`, which is a
+machine-local ignored file and should remain mode `600`. Never put real values in this skill,
+the example file, repository files, shell history, logs, or chat. The downloader constructs
+the proxy URL in memory and does not print it.
 
 ## After fetching
 
