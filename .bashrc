@@ -101,19 +101,6 @@ codex_sync_config() {
   fi
 }
 
-codex_sync_skills() {
-  local script="$AGENTS_DOTFILES_DIR/scripts/setup_codex_skills.py"
-
-  if command -v python3 >/dev/null 2>&1; then
-    python3 "$script" >/dev/null 2>&1 || true
-    return
-  fi
-
-  if command -v uv >/dev/null 2>&1; then
-    uv run --no-project python "$script" >/dev/null 2>&1 || true
-  fi
-}
-
 oc() {
   local env_file="$AI_DOTFILES_DIR/config/opencode/env_unset.txt"
   local unset_args=()

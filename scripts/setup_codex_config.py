@@ -1,17 +1,96 @@
-"""Sync repo-managed Codex settings into ~/.codex/config.toml."""
+"""Sync repo-managed Codex settings into $CODEX_HOME/config.toml.
+
+Also removes legacy repo-managed skill symlinks from $CODEX_HOME/skills:
+Codex now discovers shared skills in ~/.agents/skills, so the per-skill
+symlinks this repo used to maintain are obsolete. Only symlinks pointing
+into this repo's skills/ directory (and the state files tracking them) are
+removed; anything else is left untouched.
+"""
 
 from __future__ import annotations
 
 import json
+import os
 import re
+import shutil
 from pathlib import Path
 
 
 BARE_KEY_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
+STATE_FILES = (".managed-skills-state.json", ".claude-bridge-state.json")
+OLD_COMMAND_PREFIX = "claude-command-"
+
 
 def load_settings(path: Path) -> dict:
     return json.loads(path.read_text())
+
+
+def load_state_skills(path: Path) -> set[str]:
+    if not path.exists():
+        return set()
+    try:
+        data = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        return set()
+    if isinstance(data, dict):
+        return {str(item) for item in data.get("skills", [])}
+    if isinstance(data, list):
+        return {str(item) for item in data}
+    return set()
+
+
+def remove_path(path: Path) -> None:
+    if path.is_symlink() or path.is_file():
+        path.unlink()
+    elif path.is_junction():
+        path.rmdir()
+    elif path.is_dir():
+        shutil.rmtree(path)
+
+
+def remove_legacy_skills(codex_home: Path, repo_skills_dir: Path) -> None:
+    skills_dir = codex_home / "skills"
+
+    if skills_dir.is_symlink():
+        resolved = skills_dir.resolve()
+        if resolved == repo_skills_dir or repo_skills_dir in resolved.parents:
+            skills_dir.unlink()
+            print(f"  Removed {skills_dir} symlink; skills now load from {repo_skills_dir}")
+        return
+
+    if not skills_dir.is_dir():
+        return
+
+    managed: set[str] = set()
+    for state_file in STATE_FILES:
+        managed |= load_state_skills(skills_dir / state_file)
+
+    for child in skills_dir.iterdir():
+        if not child.is_symlink() and not child.is_junction():
+            continue
+        resolved = child.resolve()
+        if resolved == repo_skills_dir or repo_skills_dir in resolved.parents:
+            managed.add(child.name)
+
+    for child in skills_dir.glob(f"{OLD_COMMAND_PREFIX}*"):
+        if child.is_symlink() or child.is_junction():
+            managed.add(child.name)
+
+    removed = 0
+    for name in sorted(managed):
+        target = skills_dir / name
+        if target.is_symlink() or target.is_junction():
+            remove_path(target)
+            removed += 1
+
+    for state_file in STATE_FILES:
+        state_path = skills_dir / state_file
+        if state_path.exists():
+            state_path.unlink()
+
+    if removed:
+        print(f"  Removed {removed} legacy skill symlinks from {skills_dir}")
 
 
 def flatten_sections(node: dict, prefix: tuple[str, ...] = ()) -> list[tuple[tuple[str, ...], dict]]:
@@ -105,13 +184,8 @@ def upsert_section(lines: list[str], header: str, assignments: dict[str, object]
     return changed
 
 
-def main() -> None:
-    repo_dir = Path(__file__).resolve().parent.parent
-    settings_path = repo_dir / "config" / "codex" / "settings.json"
-    config_path = Path.home() / ".codex" / "config.toml"
+def sync_config(config_path: Path, desired: dict) -> None:
     config_path.parent.mkdir(parents=True, exist_ok=True)
-
-    desired = load_settings(settings_path)
     sections = flatten_sections(desired)
 
     original = config_path.read_text() if config_path.exists() else ""
@@ -132,6 +206,16 @@ def main() -> None:
         print(f"  Updated {config_path}")
     else:
         print(f"  No changes needed in {config_path}")
+
+
+def main() -> None:
+    repo_dir = Path(__file__).resolve().parent.parent
+    repo_skills_dir = (repo_dir / "skills").resolve()
+    codex_home = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
+
+    desired = load_settings(repo_dir / "config" / "codex" / "settings.json")
+    sync_config(codex_home / "config.toml", desired)
+    remove_legacy_skills(codex_home, repo_skills_dir)
 
 
 if __name__ == "__main__":

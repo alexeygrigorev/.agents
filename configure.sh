@@ -12,9 +12,12 @@ usage() {
 Usage: ./configure.sh [--yes] [all|claude|codex|opencode|zlaude|zodex|godex ...]
 
 Targets:
+  all       Configure every target except zlaude (default)
   claude    Symlink skills into ~/.claude and sync Claude settings
-  codex     Sync Codex config and shared skills into ~/.codex
-  opencode  Symlink skills into ~/.config/opencode
+  codex     Sync Codex config into ~/.codex and remove legacy skill
+            symlinks (Codex loads shared skills from ~/.agents/skills)
+  opencode  Sync OpenCode config into ~/.config/opencode (skills load
+            from ~/.agents/skills)
   zlaude    Configure a Z.AI-routed Claude profile under ~/.zlaude
             (prompts for a Z.AI API key; not included in 'all')
   zodex     Configure a Z.AI-routed Codex profile under ~/.zodex
@@ -22,7 +25,6 @@ Targets:
   godex     Configure an OpenCode Go-routed Codex profile under ~/.godex
             (prompts for an OpenCode Go API key; not included in 'all')
   zcodex    Configure the zcodex Codex variant under ~/.zcodex
-  all       Configure every target except zlaude (default)
 EOF
 }
 
@@ -143,20 +145,57 @@ remove_managed_commands() {
     fi
 }
 
+# Codex and OpenCode (and most other agents) load shared skills from
+# ~/.agents/skills, so ~/.agents must point at this repo.
+ensure_agents_dir() {
+    local link="$HOME/.agents"
+
+    if [[ -L "$link" ]]; then
+        if [[ "$(readlink -f "$link")" == "$REPO_DIR" ]]; then
+            return
+        fi
+        echo "WARNING: $link is a symlink to $(readlink -f "$link"), not $REPO_DIR; leaving it unchanged."
+        return
+    fi
+
+    if [[ -e "$link" ]]; then
+        echo "WARNING: $link exists and is not a symlink; leaving it unchanged."
+        return
+    fi
+
+    ln -s "$REPO_DIR" "$link"
+    echo "Linked $link -> $REPO_DIR"
+}
+
+# Remove a skills symlink that points into this repo; the agents that used
+# to need it now read ~/.agents/skills directly.
+remove_repo_skills_link() {
+    local target_dir="$1"
+    local target="$target_dir/skills"
+
+    if [[ -L "$target" && "$(readlink -f "$target")" == "$REPO_DIR/skills" ]]; then
+        rm "$target"
+        echo "Removed $target (skills now load from ~/.agents/skills)"
+    fi
+}
+
+ensure_agents_dir
+
 if has_target claude; then
     link_shared_dirs "$HOME/.claude"
     run_python "$REPO_DIR/scripts/setup_settings.py"
 fi
 
 if has_target opencode; then
-    link_shared_dirs "$HOME/.config/opencode"
+    mkdir -p "$HOME/.config/opencode"
+    remove_repo_skills_link "$HOME/.config/opencode"
+    remove_managed_commands "$HOME/.config/opencode"
     run_python "$REPO_DIR/scripts/setup_opencode_config.py"
 fi
 
 if has_target codex; then
     mkdir -p "$HOME/.codex"
     run_python "$REPO_DIR/scripts/setup_codex_config.py"
-    run_python "$REPO_DIR/scripts/setup_codex_skills.py"
 fi
 
 if has_explicit_target zlaude; then
@@ -171,7 +210,7 @@ if has_explicit_target zodex; then
     # aborts here before the skills symlink is created, so nothing is left behind.
     run_python "$REPO_DIR/scripts/setup_zodex.py"
     chmod +x "$REPO_DIR/scripts/zodex_start_proxy.sh"
-    CODEX_HOME="$HOME/.zodex" run_python "$REPO_DIR/scripts/setup_codex_skills.py"
+    CODEX_HOME="$HOME/.zodex" run_python "$REPO_DIR/scripts/setup_codex_config.py"
 fi
 
 if has_explicit_target godex; then
@@ -180,7 +219,7 @@ if has_explicit_target godex; then
     # left behind.
     run_python "$REPO_DIR/scripts/setup_godex.py"
     chmod +x "$REPO_DIR/scripts/godex_start_proxy.sh"
-    CODEX_HOME="$HOME/.godex" run_python "$REPO_DIR/scripts/setup_codex_skills.py"
+    CODEX_HOME="$HOME/.godex" run_python "$REPO_DIR/scripts/setup_codex_config.py"
 fi
 
 if has_explicit_target zcodex; then
@@ -198,7 +237,7 @@ base_url = ""
 wire_api = "zcode"
 EOF
     fi
-    CODEX_HOME="$HOME/.zcodex" run_python "$REPO_DIR/scripts/setup_codex_skills.py"
+    CODEX_HOME="$HOME/.zcodex" run_python "$REPO_DIR/scripts/setup_codex_config.py"
 fi
 
 # Install CLI wrappers to ~/bin
