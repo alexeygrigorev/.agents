@@ -1,11 +1,15 @@
 ---
 name: external-model-agents
-description: Run Claude Code, Codex, or Grok as peer non-interactive agents for delegated analysis, implementation, or review. Use when one AI CLI should invoke either of the other peer CLIs without opening an interactive TUI.
+description: Use only when the user explicitly mentions external agents and asks to invoke Claude Code, Codex CLI, or Grok non-interactively for delegated work. Do not use for generic subagents, Luna agents, or the built-in subagent tool.
 ---
 
 # External Model Agents
 
 Claude Code, Codex, and Grok are peers. Any one can call either of the others as an ordinary background process. They do not inherit the caller's conversation or agent context.
+
+## Activation boundary
+
+Use this skill only when the user explicitly mentions external agents (or explicitly invokes this skill) and wants an external model CLI used for the work. A request for generic “agents,” “subagents,” or “Luna agents” alone does not activate this skill; use the built-in subagent tools instead.
 
 ## Never start an interactive session
 
