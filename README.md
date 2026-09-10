@@ -137,10 +137,12 @@ spawn, task delivery, child tool use, wait, and final aggregation.
 
 ## What It Does
 
-- `claude`: symlinks `skills/` into `~/.claude`, then merges `config/claude/settings.json` into `~/.claude/settings.json`
-- `codex`: syncs `config/codex/settings.json` into `~/.codex/config.toml`, then symlinks shared skills into `~/.codex/skills`
-- `zodex`: writes `~/.zodex/config.toml` with multi-agent v2 enabled, stores the Z.AI key in `~/.zodex/zai.env`, configures the local proxy, then syncs shared skills into `~/.zodex/skills`
-- `opencode`: symlinks `skills/` into `~/.config/opencode`
+Every run first ensures `~/.agents` points at this repo. Codex, OpenCode, and most other agents load shared skills from `~/.agents/skills`.
+
+- `claude`: symlinks `skills/` into `~/.claude` (Claude Code does not read `~/.agents/skills` yet), then merges `config/claude/settings.json` into `~/.claude/settings.json`
+- `codex`: syncs `config/codex/settings.json` into `~/.codex/config.toml` and removes the legacy per-skill symlinks from `~/.codex/skills`
+- `zodex`: writes `~/.zodex/config.toml` with multi-agent v2 enabled, stores the Z.AI key in `~/.zodex/zai.env`, configures the local proxy
+- `opencode`: merges `config/opencode/settings.json` into `~/.config/opencode/opencode.json` and removes the legacy skills symlink
 - `zlaude` (opt-in): prompts for a Z.AI key, then symlinks `skills/` into `~/.zlaude` and writes `~/.zlaude/settings.json` (shared settings + Z.AI env block)
 - all targets: install CLI wrappers from `bin/` into `~/bin`
 - all targets: add a `source` line to `~/.bashrc` pointing to this repo's `.bashrc`
@@ -163,7 +165,7 @@ Since `.bashrc` is sourced from the repo, pulling updates is enough to get new a
 
 ## Skills
 
-Skills are shared across Claude Code, Codex, and OpenCode where supported.
+Skills live in this repo, which `~/.agents` points at. Codex and OpenCode discover them directly from `~/.agents/skills`; Claude Code gets them via a `~/.claude/skills` symlink.
 
 | Skill | Description |
 |-------|-------------|
@@ -192,7 +194,6 @@ Available after sourcing `.bashrc`:
 
 - `claude_init` - copy the shared `CLAUDE.md` template into the current directory
 - `codex_sync_config` - sync repo-managed Codex settings into `~/.codex/config.toml`
-- `codex_sync_skills` - sync shared skills into `~/.codex/skills`
 
 ## Adding New Assets
 
