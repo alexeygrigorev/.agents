@@ -1,0 +1,4 @@
+interface:
+  display_name: "Adversarial Design Review"
+  short_description: "Iterate UI work until a critical reviewer accepts it"
+  default_prompt: "Use an independent adversarial design review loop and iterate until the result meets a high acceptance bar."
