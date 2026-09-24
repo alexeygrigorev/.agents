@@ -1,0 +1,4 @@
+interface:
+  display_name: "YouTube Manager"
+  short_description: "Update DataTalksClub YouTube metadata via youtube-manager-agent"
+  default_prompt: "Use $youtube-manager to update this course video's YouTube description."
