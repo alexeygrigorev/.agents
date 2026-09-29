@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent-to-agent coordination"
+  short_description: "Coordinate running agents through aplexer messages"
+  default_prompt: "Use $a2a-communication to coordinate with the other running agent and verify a reply."
