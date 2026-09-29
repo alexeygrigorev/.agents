@@ -66,6 +66,9 @@ Do not acknowledge the entire inbox when only one request was reviewed.
 Treat the durable message ID as the request's deduplication key. The inbox copy is saved before
 pane submission, so a polling recipient may see the same ID in both places. Process that ID
 once; if it reappears, reuse the recorded reply or outcome instead of repeating its action.
+Also record the coordination token and agreed action: a peer can send the same acknowledgement
+under two distinct message IDs. Acknowledge each received ID, but apply the same ownership
+release or completed action once. Conflicting replies require reconciliation before acting.
 Transport does not guarantee exactly-once processing. A failed strict `--pane` attempt can
 also leave a recorded inbox message: inspect the returned ID before retrying.
 
