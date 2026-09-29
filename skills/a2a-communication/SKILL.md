@@ -41,6 +41,9 @@ the agent reports `working` is not an idle prompt. This writes into the live
 input pane and must not be used to bypass a request not to interrupt or to overwrite a person's
 unfinished prompt. `--or-inbox` preserves a message when immediate pane delivery is unavailable.
 Inbox fallback does not mean the peer has been woken or has read the request.
+Framed pane submission checks live terminal bracketed-paste support, so Codex launched inside
+a session recorded as `shell` can receive the same paste framing. This mode advertises an input
+capability, not an empty composer or consent to interrupt; still inspect readiness first.
 Both sides need a binary supporting native cross-workspace replies; when using a development
 build, include its exact path in the handoff instead of assuming the peer's installed CLI matches.
 
