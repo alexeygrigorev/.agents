@@ -140,7 +140,7 @@ spawn, task delivery, child tool use, wait, and final aggregation.
 Every run first ensures `~/.agents` points at this repo. Codex, OpenCode, and most other agents load shared skills from `~/.agents/skills`.
 
 - `claude`: symlinks `skills/` into `~/.claude` (Claude Code does not read `~/.agents/skills` yet), then merges `config/claude/settings.json` into `~/.claude/settings.json`
-- `codex`: syncs `config/codex/settings.json` into `~/.codex/config.toml` and removes the legacy per-skill symlinks from `~/.codex/skills`
+- `codex`: syncs `config/codex/settings.json` into `~/.codex/config.toml`, defaults to full access with approvals disabled (`sandbox_mode = "danger-full-access"`, `approval_policy = "never"`), and removes the legacy per-skill symlinks from `~/.codex/skills`
 - `zodex`: writes `~/.zodex/config.toml` with multi-agent v2 enabled, stores the Z.AI key in `~/.zodex/zai.env`, configures the local proxy
 - `opencode`: merges `config/opencode/settings.json` into `~/.config/opencode/opencode.json` and removes the legacy skills symlink
 - `zlaude` (opt-in): prompts for a Z.AI key, then symlinks `skills/` into `~/.zlaude` and writes `~/.zlaude/settings.json` (shared settings + Z.AI env block)

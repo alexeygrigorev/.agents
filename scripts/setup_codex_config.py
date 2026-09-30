@@ -104,14 +104,14 @@ def flatten_sections(node: dict, prefix: tuple[str, ...] = ()) -> list[tuple[tup
             scalars[key] = value
 
     if scalars:
-        if not prefix:
-            raise ValueError("settings.json must not contain top-level scalar keys")
         sections.insert(0, (prefix, scalars))
 
     return sections
 
 
 def format_header(parts: tuple[str, ...]) -> str:
+    if not parts:
+        return ""
     rendered = []
     for part in parts:
         if BARE_KEY_RE.fullmatch(part):
@@ -134,14 +134,21 @@ def format_value(value: object) -> str:
 
 
 def find_section(lines: list[str], header: str) -> tuple[int | None, int | None]:
+    if not header:
+        end = next(
+            (index for index, line in enumerate(lines) if line.lstrip().startswith("[")),
+            len(lines),
+        )
+        return -1, end
+    header_matcher = re.compile(rf"^\s*{re.escape(header)}\s*(?:#.*)?$")
     for index, line in enumerate(lines):
-        if line.strip() != header:
+        if not header_matcher.match(line):
             continue
 
         end = len(lines)
         for next_index in range(index + 1, len(lines)):
             stripped = lines[next_index].strip()
-            if stripped.startswith("[") and stripped.endswith("]"):
+            if stripped.startswith("["):
                 end = next_index
                 break
         return index, end
@@ -202,7 +209,7 @@ def sync_config(config_path: Path, desired: dict) -> None:
     if updated != original:
         config_path.write_text(updated)
         for header in changed_sections:
-            print(f"  Synced {header} in {config_path}")
+            print(f"  Synced {header or 'top-level settings'} in {config_path}")
         print(f"  Updated {config_path}")
     else:
         print(f"  No changes needed in {config_path}")
