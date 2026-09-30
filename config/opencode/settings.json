@@ -1,11 +1,18 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "permission": {
+    "*": "allow",
+    "doom_loop": "deny",
+    "question": "allow",
     "external_directory": {
+      "**": "allow",
       "~/git/**": "allow",
       "~/tmp/**": "allow",
       "/data/**": "allow",
       "/tmp/**": "allow"
+    },
+    "read": {
+      "*": "allow"
     }
   }
 }
