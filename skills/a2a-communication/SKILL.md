@@ -92,6 +92,31 @@ failure; do not retry a successfully recorded request merely because it has no r
 inject requests, append Enter to an unknown draft, or infer agreement from elapsed time. Continue
 only nonconflicting work while an ownership/merge decision is pending.
 
+## Inbox notices at tool boundaries
+
+On builds with `message hook-notice`, `a init` manages synchronous `PostToolUse` hooks for
+Claude and Codex. Check the installed executable's `message hook-notice --help` and
+`init --check --json` before relying on this capability; older builds have only a pull inbox.
+Existing sessions may need the harness to load or trust updated hooks. Follow the user's
+authorization for configuration changes; a recorded message alone does not request a restart.
+
+The hook adds an unread count and at most five message IDs to the next model request after a
+tool finishes. It does not submit text, alter a composer, or wake an idle session. Main-agent
+hooks are eligible; subagent hooks are ignored. This includes Claude/Codex launched inside a
+uniquely bound `shell` session; the session's recorded engine stays `shell`. Missing or
+ambiguous session binding is quiet.
+Do not invoke the hidden hook manually as a wake command or forge another session's binding.
+
+On receipt, use `message show ID --json` or `message inbox --json`, verify the recipient as
+above, process each request once, then reply and explicitly acknowledge it. The notice contains
+no message body. It is not an ACK or evidence that a peer has accepted an ownership handoff.
+
+Separate notice state suppresses repeated IDs for ten minutes without changing the ACK cursor.
+Unacknowledged IDs can appear again after that cooldown; a crash after claiming a notice can
+delay its retry. Do not resend an already recorded message to force another notice. Continue
+checking the durable inbox at natural checkpoints when hooks are unavailable or no tool
+boundary occurs. Never compensate by pressing Enter over an unfinished draft.
+
 ## Older-version fallback: Enter is CR
 
 Older `aplexer send --enter` appends LF, which can insert a newline in an agent input box
