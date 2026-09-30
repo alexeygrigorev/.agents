@@ -95,6 +95,41 @@ failure; do not retry a successfully recorded request merely because it has no r
 inject requests, append Enter to an unknown draft, or infer agreement from elapsed time. Continue
 only nonconflicting work while an ownership/merge decision is pending.
 
+## Deliver a queued message when the peer becomes ready
+
+An inbox-only message does not wake an idle recipient. Claude's Stop hook reports
+state; tool-boundary notices require a later tool call. Do not assume either will
+process a request while the peer stays idle.
+
+If the installed `aplexer message --help` lists `deliver`, a known inbox-only
+message can be submitted later without creating a second envelope:
+
+```bash
+aplexer message deliver MESSAGE_ID --workspace /absolute/path/to/peer-repo --json
+```
+
+- First inspect the peer's fresh state and rendered composer. Proceed only at an
+  idle/waiting, empty prompt when waking the peer fits the authorized task. A
+  `waiting` report alone does not establish an empty composer.
+- Use the existing durable ID and its destination workspace. The command binds
+  delivery to the original recipient UUID and permits the original sender or
+  recipient to invoke it. Do not override session identity or create a new send.
+- `submitted` confirms framed input plus the separate Enter event reached the
+  transport. Obtain an explicit peer reply before treating a handoff as agreed.
+- `already-submitted` means the envelope already records pane delivery and no
+  new input was written. A prior `--no-enter` send can have this record too; do
+  not append Enter to an unknown draft.
+- `recipient-acked` skips delivery. It proves mailbox acknowledgement, not that
+  the peer agreed to the requested ownership or action.
+- `not-ready` leaves the message queued before input submission. Reconsider
+  delivery only after fresh evidence that the peer is ready with an empty prompt.
+- `delivery-uncertain` means input may have been written. Do not retry, remove
+  the reservation, resend under a new ID, or append Enter. Inspect the recipient
+  and obtain its acknowledgement before deciding what further action is needed.
+- If this verb is absent, keep the durable request pending. Do not resend merely
+  to wake the peer. An older client's ambiguous pane failure has no reliable
+  attempt history; the new verb cannot retroactively prove it was inbox-only.
+
 ## Inbox notices at tool boundaries
 
 On builds with `message hook-notice`, `a init` manages synchronous `PostToolUse` hooks for
