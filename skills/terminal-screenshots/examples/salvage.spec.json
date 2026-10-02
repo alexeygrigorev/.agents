@@ -1,0 +1,41 @@
+{
+  "theme": "github-dark",
+  "chrome": "window",
+  "title": "tmuxctl salvage",
+  "width": 1494,
+  "pad_bottom": 71,
+  "pad_bottom": 71,
+  "lines": [
+    {"spans": [["$ ", "prompt"], ["t salvage", "bright", true]]},
+    {"lead": 1, "spans": [
+      ["SESSION", "white", true],
+      {"t": "STATUS", "c": "white", "b": true, "col": 17},
+      {"t": "DETAIL", "c": "white", "b": true, "col": 45}
+    ]},
+    {"spans": [
+      ["git-myproj", "fg"],
+      {"t": "healthy", "c": "green", "col": 17},
+      {"t": "own server is up", "c": "muted", "col": 45}
+    ]},
+    {"spans": [
+      ["rk-codex", "fg"],
+      {"t": "reattachable-dtach", "c": "blue", "col": 17},
+      {"t": "dtach master survived", "c": "muted", "col": 45}
+    ]},
+    {"spans": [
+      ["git-gone", "fg"],
+      {"t": "gone", "c": "yellow", "col": 17},
+      {"t": "recreate from log", "c": "muted", "col": 45}
+    ]},
+    {"spans": [
+      ["experiments", "fg"],
+      {"t": "stale-work", "c": "yellow", "col": 17},
+      {"t": "leftover process holds the scope", "c": "muted", "col": 45}
+    ]},
+    {"spans": [
+      ["git-foreign", "fg"],
+      {"t": "needs-manual-reclaim", "c": "red", "col": 17},
+      {"t": "foreign occupant; do not auto-recreate", "c": "muted", "col": 38}
+    ]}
+  ]
+}
