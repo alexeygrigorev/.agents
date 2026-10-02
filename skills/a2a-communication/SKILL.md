@@ -145,12 +145,20 @@ aplexer message deliver MESSAGE_ID --workspace /absolute/path/to/peer-repo --jso
   the peer agreed to the requested ownership or action.
 - `not-ready` leaves the message queued before input submission. Reconsider
   delivery only after fresh evidence that the peer is ready with an empty prompt.
+  Capturing the prompt does not refresh the harness's reported state. In builds
+  using the current state policy, idle has no clock expiry; later PTY output can
+  invalidate it. An old timestamp alone does not establish the rejection's cause.
+  Do not manually report idle or simulate a hook to make delivery pass.
 - `delivery-uncertain` means input may have been written. Do not retry, remove
   the reservation, resend under a new ID, or append Enter. Inspect the recipient
   and obtain its acknowledgement before deciding what further action is needed.
 - If this verb is absent, keep the durable request pending. Do not resend merely
   to wake the peer. An older client's ambiguous pane failure has no reliable
   attempt history; the new verb cannot retroactively prove it was inbox-only.
+
+The current delivery path does not automatically classify human drafts. Prompt
+inspection is the caller's responsibility and can race with later input. Neither
+reported idle nor bracketed-paste support proves that the composer is empty.
 
 ## Inbox notices at tool boundaries
 
