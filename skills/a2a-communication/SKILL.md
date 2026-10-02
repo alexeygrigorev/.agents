@@ -229,6 +229,9 @@ Start with a compact message containing:
 
 - Task/issue, branch, worktree and base commit.
 - Owned files/globs, including tests and shared helpers.
+- Current coding/testing authority paths and revisions, including owner-confirmed
+  standards outside the worktree. Name each exception's exact scope; a file-size
+  exception does not waive function limits. Read protected guidance without editing it.
 - Reserved ports, running test workloads and deployment responsibility.
 - Requested action and the evidence that will release ownership.
 - Explicit limits such as preserving UX, no main edits, or no merge/push yet.
