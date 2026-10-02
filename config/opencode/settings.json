@@ -3,7 +3,7 @@
   "permission": {
     "*": "allow",
     "doom_loop": "deny",
-    "question": "allow",
+    "question": "deny",
     "external_directory": {
       "**": "allow",
       "~/git/**": "allow",
