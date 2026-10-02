@@ -95,6 +95,28 @@ failure; do not retry a successfully recorded request merely because it has no r
 inject requests, append Enter to an unknown draft, or infer agreement from elapsed time. Continue
 only nonconflicting work while an ownership/merge decision is pending.
 
+## Wait for a peer reply
+
+After an asynchronous peer request, an optional mailbox wait can make useful pauses
+responsive to replies. Check the installed `aplexer message wait --help` first;
+use it only when the verified executable supports this command and the flags below.
+
+```bash
+aplexer message wait --timeout 60 --json
+```
+
+Wait only as your actual bound session; verify it with `whoami` as above. Do not
+use `--from`, override the workspace, or forge session binding. The integer timeout
+(default 60 seconds) bounds the wait; use at most 60 seconds when user updates are due.
+JSON output contains unread messages, or `[]` on timeout. Existing unread messages
+return immediately. Read, process once, reply as needed, and explicitly ACK each reviewed
+ID before waiting again; repeated waits on unacknowledged messages create a busy loop.
+Waiting does not ACK messages, write to a pane, wake a peer, or release ownership.
+A timeout supplies no evidence of agreement. Continue independent work or update the user.
+Busy mailbox/cursor locks can return an explicit error; do not interpret that as an empty inbox.
+Existing legacy mail is migrated on entry, but writes made afterward by legacy clients
+do not wake this command. Use current clients for event-driven delivery.
+
 ## Deliver a queued message when the peer becomes ready
 
 An inbox-only message does not wake an idle recipient. Claude's Stop hook reports
