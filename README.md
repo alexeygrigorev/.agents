@@ -189,6 +189,15 @@ Available after sourcing `.bashrc`:
 | `csp` | `claude --dangerously-skip-permissions` |
 | `ccsp` | `claude -c --dangerously-skip-permissions` |
 | `cy` | `codex --dangerously-bypass-approvals-and-sandbox` |
+| `agc` | `agy -c` |
+| `asp` | `agy --dangerously-skip-permissions` |
+| `acsp` | `agy -c --dangerously-skip-permissions` |
+
+Antigravity's `asp` and `acsp` aliases auto-approve tool permission requests.
+Use `asp` for the interactive TUI or `asp -p "Your task" --output-format json`
+for a headless run. In scripts, use the full command
+`agy --dangerously-skip-permissions -p "Your task" --output-format json`,
+since non-interactive shells do not expand aliases by default.
 
 ### Functions
 

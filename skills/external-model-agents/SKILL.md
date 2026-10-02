@@ -1,11 +1,11 @@
 ---
 name: external-model-agents
-description: Use only when the user explicitly mentions external agents and asks to invoke Claude Code, Codex CLI, or Grok non-interactively for delegated work. Do not use for generic subagents, Luna agents, or the built-in subagent tool.
+description: Use only when the user explicitly mentions external agents and asks to invoke Claude Code, Codex CLI, Grok, or Google Antigravity CLI non-interactively for delegated work. Do not use for generic subagents, Luna agents, or the built-in subagent tool.
 ---
 
 # External Model Agents
 
-Claude Code, Codex, and Grok are peers. Any one can call either of the others as an ordinary background process. They do not inherit the caller's conversation or agent context.
+Claude Code, Codex, Grok, and Google Antigravity CLI (`agy`) are peers. Any one can call the others as an ordinary background process. They do not inherit the caller's conversation or agent context.
 
 ## Activation boundary
 
@@ -19,9 +19,10 @@ Use only these non-interactive forms:
 claude -p "your prompt"
 codex exec "your prompt"
 grok -p "your prompt"
+agy -p "your prompt"
 ```
 
-Plain `claude`, plain `codex`, and Grok without `-p/--single` open interactive interfaces. Never use those forms for delegated work: an interactive process does not exit on its own and can strand the background job forever.
+Plain `claude`, plain `codex`, plain `agy`, and Grok without `-p/--single` open interactive interfaces. Never use those forms for delegated work: an interactive process does not exit on its own and can strand the background job forever.
 
 ## Run safely
 
@@ -74,6 +75,41 @@ timeout 60m grok \
 ```
 
 `-p/--single` supplies a single-turn prompt, prints the response, and exits. Choose the model with `-m/--model`, reasoning depth with `--reasoning-effort` or `--effort`, and non-interactive tool handling with `--permission-mode auto`. `--output-format` accepts `plain`, `json`, `streaming-json`, or `streaming-messages-json`; `--json-schema` constrains the response and implies JSON output.
+
+### Google Antigravity CLI
+
+Use `agy`, Google's current terminal agent, for Google subscription-backed external agents. Authenticate once in an interactive `agy` session before delegation; headless runs use saved credentials and fail if authentication is missing. See the [official authentication guide](https://www.antigravity.google/docs/cli/install/).
+
+Run from the assigned repository or isolated worktree; `--add-dir` adds workspace access rather than changing the working directory. Use the executable directly, since non-interactive shells generally do not expand the `asp` alias.
+
+```bash
+(
+  cd /repo || exit 1
+  exec timeout 60m env -u GEMINI_API_KEY -u GOOGLE_API_KEY agy \
+    --dangerously-skip-permissions \
+    --effort high \
+    --print-timeout 0 \
+    --output-format json \
+    -p "Read AGENTS.md and CLAUDE.md. Implement X; another agent owns Y. Write progress incrementally to /repo/.tmp/agy-work.md; print a short final summary."
+) > /tmp/agy-agent.json 2> /tmp/agy-agent.log &
+agy_pid=$!
+```
+
+`--dangerously-skip-permissions` auto-approves tool calls, including shell commands and file writes; use it when bypass is authorized for the task, as in this workspace. Otherwise omit it and configure scoped `permissions.allow` rules. Headless tools that need an approval they cannot obtain can be denied while the process still exits successfully, so inspect stderr and verify the requested deliverable.
+
+On the installed version, `--print-timeout 0` waits until the turn finishes; the outer timeout still bounds the process. Check `agy --help` when upgrading. Choose a model from `agy models` and pass `--model MODEL_SLUG` when the user requests one. Do not substitute a model silently. `--effort` accepts `low`, `medium`, `high`, and `max` on the installed version.
+
+Capture stdout and stderr separately: stdout holds the JSON result, while stderr holds diagnostics. After the background process completes, inspect the exit code, result `status`, `error`, and `response`, then read the incremental deliverable. To resume a particular run, use `agy --conversation CONVERSATION_ID -p "Follow-up"`; use `-c` only when the most recent conversation is unambiguous.
+
+For progress events use `--output-format stream-json`. For a persistent multi-turn headless session, use `--input-format stream-json --output-format stream-json`, omit `-p`, and send one NDJSON message per turn:
+
+```json
+{"event":"user","message":{"content":"Your prompt"}}
+```
+
+Read events as they arrive, wait for the current turn's `result` before sending the next prompt, and close stdin when finished. CLI-handled slash commands such as `/model` and `/usage` must be separate `agy -p /model` calls, not messages in this stream. See the [official headless guide](https://www.antigravity.google/docs/cli/headless/).
+
+For browserless CI, an API key is a separate authentication option: set `modelProvider` to `gemini` in `~/.gemini/antigravity-cli/settings.json` and export `GEMINI_API_KEY`. Setting the key alone does not select that provider. For this user's subscription-backed runs, use saved Google sign-in and strip ambient `GEMINI_API_KEY` and `GOOGLE_API_KEY` rather than changing provider settings.
 
 ## Preserve repository contracts
 

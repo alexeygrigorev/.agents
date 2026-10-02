@@ -13,6 +13,11 @@ alias gc="grok -c"
 alias gsp="grok --permission-mode bypassPermissions"
 alias gcsp="grok -c --permission-mode bypassPermissions"
 
+# Antigravity CLI: interactive or headless with tool permissions auto-approved.
+alias agc="agy -c"
+alias asp="agy --dangerously-skip-permissions"
+alias acsp="agy -c --dangerously-skip-permissions"
+
 # zlaude: Claude Code routed to Z.AI via the ~/.zlaude profile
 # (configure with: ./configure.sh zlaude).
 # Runs claude with a clean env: any ambient ANTHROPIC_* vars (e.g. a project
