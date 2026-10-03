@@ -129,6 +129,15 @@ An inbox-only message does not wake an idle recipient. Claude's Stop hook report
 state; tool-boundary notices require a later tool call. Do not assume either will
 process a request while the peer stays idle.
 
+Before diagnosing a queued delivery, check `message readiness --help` on the
+installed/resolved executable. If supported, use its read-only query with the
+exact recipient UUID and supported workspace arguments. Readiness reasons and
+any native event/state timestamp correspondence are diagnostics, not authentication
+or proof that hooks are loaded or the composer is empty. Missing native provenance
+can reflect legacy wiring. Keep the existing state policy and prompt inspection;
+do not simulate hooks or use an uninstalled validation binary on real sessions
+to obtain a ready result.
+
 If the installed `aplexer message --help` lists `deliver`, a known inbox-only
 message can be submitted later without creating a second envelope:
 
