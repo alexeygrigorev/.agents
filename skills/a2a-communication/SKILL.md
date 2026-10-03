@@ -138,6 +138,12 @@ can reflect legacy wiring. Keep the existing state policy and prompt inspection;
 do not simulate hooks or use an uninstalled validation binary on real sessions
 to obtain a ready result.
 
+If a peer list shows idle but live readiness rejects it, some builds list persisted
+records while live Status overlays newer existing worker activity. Compare the
+same state and activity fields at their observation times. A rejection after screen
+capture does not establish that capture caused the activity change; verify the
+installed behavior rather than inferring it from another checkout.
+
 If the installed `aplexer message --help` lists `deliver`, a known inbox-only
 message can be submitted later without creating a second envelope:
 
