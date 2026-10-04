@@ -244,6 +244,29 @@ unknown draft. The receiver can reply using the same fallback to the sender UUID
 headers are self-reported text; they are not verified transport identity or a durable thread.
 Use a nonce/explicit response to establish receipt, and prefer upgrading to the native route.
 
+## Session provenance and internal sub-agents
+
+Native provenance identifies a session, not which internal thread or sub-agent acted. Siblings
+inside one session share its mailbox and ACK cursor, so one sender can appear to take conflicting
+positions. Include the role/thread identity and request token in every message, and require
+explicit acceptance from the named owner or orchestrator; an ACK proves mailbox read only, never
+that the root read or decided. When roles need independent file or test ownership, prefer
+separately allocated native sessions and worktrees from the authorized external launcher; after
+naming a writer, the coordinator stops writing that scope, and a freeze is effective only when it
+reaches the writers who must honor it, not when one shared ACK exists.
+
+Envelope rules bind the whole session tree: process each durable ID once even when one body
+arrives under two IDs, never delete mailboxes or cursors, and keep the impersonation prohibitions
+above.
+
+Before claiming an unknown concurrent writer, cite your own tool events and child roster. A tool
+error on a write path does not prove absence of side effect: verify disk and HEAD hashes before
+retrying, and never blindly overwrite. Timing coupling between a logged error and a mutation is
+not payload-level proof; do not report an Aplexer transport bug without it. When the harness can
+replay commit or test commands, rely on its receipts and exclusive invocation guards instead of
+adding a competing global lock, and honor independent exact-hash QA/PM review and the user's
+stated scope.
+
 ## Coordination content
 
 Start with a compact message containing:
