@@ -7,7 +7,12 @@ alias c="claude"
 alias cc="claude -c"
 alias csp="claude --dangerously-skip-permissions"
 alias ccsp="claude -c --dangerously-skip-permissions"
-alias cy="codex --dangerously-bypass-approvals-and-sandbox"
+if [ -n "$SSH_CONNECTION" ]; then
+  # sshd sessions on Windows are elevated; codex refuses to start its shared daemon there
+  alias cy="codex --dangerously-bypass-approvals-and-sandbox --no-daemon"
+else
+  alias cy="codex --dangerously-bypass-approvals-and-sandbox"
+fi
 alias g="grok"
 alias gc="grok -c"
 alias gsp="grok --permission-mode bypassPermissions"
