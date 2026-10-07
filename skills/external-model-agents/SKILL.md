@@ -92,6 +92,17 @@ changes and test results. YOLO mode grants tool execution; it does not expand
 the assigned task or authorize deployments/pushes beyond the user's scope.
 Do not change the configured model/provider unless requested.
 
+The warm bridge may emit no live tool events in the outer log while its
+inner agent is actively changing files. Monitor the assigned incremental
+deliverable, working-tree changes and final exit receipt. A successful
+`zcodex queue` receipt proves that the outer thread queued a message; it
+does not prove a running inner warm agent read it. Deliver required repair
+instructions in an explicit `exec resume THREAD -` turn after completion,
+and verify the resulting source changes. Keep one active editor per scope.
+If a running worker must be paused, terminate only that worker's owned
+process descendants, preserve its uncommitted files and logs, and resume
+with the full correction task; never interrupt unrelated sessions.
+
 ### Grok
 
 ```bash
