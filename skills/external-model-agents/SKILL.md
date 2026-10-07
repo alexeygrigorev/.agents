@@ -63,6 +63,35 @@ timeout 60m codex exec \
 
 `exec` is the non-interactive subcommand. Set model and reasoning effort together with `-c key=value` overrides; `-m/--model` is also available for the model, but reasoning effort has no dedicated flag. Use `--sandbox read-only` for analysis that needs no model-written artifact and `--sandbox workspace-write` when the task must edit or save incremental output. `-o FILE` writes the final message to a file; `--json` emits JSONL events; `--skip-git-repo-check` permits work outside a Git repository.
 
+### ZCodex (`zcodex` / `zcy`)
+
+For this user's delegated ZCodex work, use **`zcy` (YOLO mode)**. The local
+shell alias is `zcy='zcodex --dangerously-bypass-approvals-and-sandbox'`.
+Background/non-interactive shells do not load aliases, so invoke its exact
+equivalent explicitly and keep the non-interactive `exec` subcommand:
+
+```bash
+(
+  cd /assigned/worktree || exit 1
+  exec timeout 90m env ZCODE_WARM=1 ZCODE_WARM_MODE=yolo \
+    zcodex --dangerously-bypass-approvals-and-sandbox exec \
+    --disable shell_snapshot \
+    -o /tmp/zcodex-final.md - < /tmp/zcodex-prompt.txt
+) > /tmp/zcodex-run.log 2>&1 &
+```
+
+The installed ZCode warm bridge above executes tools in its own YOLO loop;
+this avoids the cold bridge reporting `No permission client configured` to
+the model while the outer harness executes emitted Bash calls. Verify a
+bounded write/read probe when the installed bridge changes. Do not enable
+inner YOLO on the cold bridge: that can execute streamed mutations twice.
+
+Use an isolated worktree and explicit file ownership when several workers
+run together. Give each an incremental deliverable and verify actual file
+changes and test results. YOLO mode grants tool execution; it does not expand
+the assigned task or authorize deployments/pushes beyond the user's scope.
+Do not change the configured model/provider unless requested.
+
 ### Grok
 
 ```bash
