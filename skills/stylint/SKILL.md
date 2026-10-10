@@ -14,10 +14,12 @@ documents, process docs, handoff docs, planning notes, or repo maintenance notes
 
 ## Before Editing
 
-Read the agent guide first:
+Print the workflow for your stage and put every numbered step in your to-do
+list:
 
 ```bash
-stylint --agents
+stylint --workflow draft path/to/content   # new text
+stylint --workflow edit path/to/content    # changes to existing text
 ```
 
 If the task needs a specific guide, print it directly:
@@ -64,6 +66,20 @@ After editing, always run the full check again without `--ignore`:
 ```bash
 stylint path/to/content
 ```
+
+## Before Reporting Done
+
+A passing static check is not the end. It covers mechanical rules only, and
+the output's `Next:` footer says so. Before you report the text as done, run:
+
+```bash
+stylint --workflow final path/to/content
+```
+
+Then do every step it lists: run each smell prompt (`stylint --prompt NAME`)
+in its own subagent, re-run the static check on the rewritten files, do the
+polish read, and run the repo's own checks. Don't mark a smell pass done
+unless a reviewer actually ran it and reported its changes.
 
 ## If Stylint Is Missing
 
