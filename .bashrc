@@ -121,7 +121,19 @@ oc() {
     done < "$env_file"
   fi
 
-  env "${unset_args[@]}" opencode --auto "$@"
+  # Rule (2026-10-14): OpenCode always runs Muse Spark 1.3, never GLM / Z.ai
+  # Coding Plan (GLM work goes through zcodex). Any -m/--model is dropped.
+  local OC_MODEL="opencode-go/muse-spark-1.3-contributor"
+  local args=() skip=0 a
+  for a in "$@"; do
+    if (( skip )); then skip=0; continue; fi
+    case "$a" in
+      -m|--model) skip=1; echo "oc: ignoring model override, pinned to $OC_MODEL" >&2 ;;
+      -m=*|--model=*) echo "oc: ignoring model override, pinned to $OC_MODEL" >&2 ;;
+      *) args+=("$a") ;;
+    esac
+  done
+  env "${unset_args[@]}" opencode --auto "${args[@]}" --model "$OC_MODEL"
 }
 
 claude_init() {
