@@ -80,7 +80,7 @@ Keep it short and point at the document:
 aplexer send /path/to/repo:release2 "You are taking over as <role> from the previous session. Read <handoff path> in full first, then AGENTS.md and <process docs>. Use the aplexer mailbox '<name>' for peer coordination. Continue the open items in order: (1) ... (2) ... (3) .... Start by summarizing your understanding and the current state to the owner." --enter
 ```
 
-- `--enter` presses Enter. Without it the text sits in the input box.
+- `--enter` presses Enter and acknowledges the delivery (aplexer >= 0.1.16): it waits for the successor's input box, checks the prompt landed and was submitted (retrying), and waits for the agent to start working. Exit 0 means delivered and working, 3 means submitted but idle, 1 means failed (the error says whether the text never arrived or stayed stuck). Do not report the handoff done on a non-zero exit. Use `aplexer --json send ...` for the full verdict.
 - For long prompts, use `aplexer send <session> --stdin --enter < prompt.txt`. Avoid unescaped quotes in shell arguments.
 - Then capture the screen after about 20–30s. The successor should acknowledge, mention reading the handoff, and start on item 1. If the screen shows an API error, fix it (usually the model) and restart.
 

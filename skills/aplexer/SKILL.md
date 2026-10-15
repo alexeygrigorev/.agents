@@ -58,7 +58,7 @@ ssh <host> 'a handoff WS:TAG'                    # transcript + screen + workspa
    ```bash
    ssh <host> 'a send WS:TAG --hex 1b5b42; sleep 1; a send WS:TAG "" --enter'
    ```
-5. Confirm the input box is showing before sending the task.
+5. Send the task. `a send --enter` waits for the input box itself (see "Send an instruction"); a capture first is only needed to spot dialogs or errors.
 
 ## Coding tasks: git workflow (user's standing preference)
 When you start an agent to fix or build something in a repo, the result goes straight to main, not to a pull request:
@@ -82,7 +82,7 @@ If a session dies, is killed, or stops before finishing its task, don't ask the 
 ## Engine quirks
 - codex-based profiles running non-OpenAI models (e.g. `zcodex`) may try a `Write` tool that doesn't exist ("unsupported call: Write"). Tell them up front to edit files with `apply_patch` or the shell.
 - antigravity's transcript is empty; use `capture --screen --plain`.
-- If a queued message isn't picked up while the agent is busy, press Esc (`--hex 1b`) and resend.
+- Sending while the agent is busy queues the prompt (`delivery.queued: true`). If a queued message isn't picked up after the turn ends, press Esc (`--hex 1b`) and resend.
 
 ## Send an instruction
 ```bash
@@ -90,7 +90,12 @@ ssh <host> 'a send WS:TAG "do X" --enter'                 # --enter submits
 ssh <host> 'a send WS:TAG --stdin --enter' < prompt.txt   # longer prompts, no quoting trouble
 ssh <host> 'a send WS:TAG --hex 1b'                       # Esc (interrupt / close a menu)
 ```
-After sending, wait a bit and read the screen or transcript to confirm the agent picked it up. If it hit a quota or error, report it.
+`--enter` acknowledges the delivery (aplexer >= 0.1.16, see the aplexer README "Delivery acknowledgement"): it waits for a booting agent's input box, checks the text landed and was submitted (pressing Enter again or resending dropped text), then waits up to `--wait-ack` seconds (default 10) for the agent to start working. Read the exit code:
+- `0`: delivered and working (or `unverified`: the screen could not be read, e.g. a trust dialog or a non-agent session, so check it yourself).
+- `3`: submitted, but the agent stayed idle. Read the screen: a slash command, a quota or error message, or a menu.
+- `1`: failed. The text never showed in the input box, or stayed stuck there after 3 Enter presses. The error says which; capture the screen before retrying.
+
+Use `a --json send ... --enter` for the full verdict (`delivery.status`, `working_evidence`, `queued`, `sends`, `enter_presses`). Sending right after `a start` is safe: the readiness wait covers the boot (OpenCode needs ~7s). Trust dialogs are not answered for you (step 4 above). If the quota or error check matters, still read the screen or transcript after the agent has had time to reply.
 
 ## Stop a session
 ```bash
