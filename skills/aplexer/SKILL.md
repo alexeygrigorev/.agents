@@ -8,6 +8,64 @@ description: >-
 ---
 # aplexer: manage remote coding-agent sessions
 
+## Hetzner: use the Hub for orchestration
+
+Alexey's 17 October 2026 instruction replaces psc/native starts for ordinary
+Hetzner orchestration with the deployed Hub at **https://hub.dtcdev.click**.
+The workers.dev hostname remains an alias. Use native aplexer commands below
+for diagnostics/recovery or explicitly authorized native operations. Win35 is
+expected offline through 31 October; do not route work there meanwhile.
+
+For a new human CLI installation (Google allowlist/device approval):
+
+```bash
+curl -fsSL https://hub.dtcdev.click/cli/install.sh | sh
+hub auth login
+hub auth status
+hub sessions list
+hub sessions tree
+hub sessions list --json
+```
+
+Use the caller's existing authorized profile; do not copy host keys or another
+person's human credentials. Agents need their own permitted Hub authority.
+The unified list includes Hub headless and externally started native sessions.
+Native aliases are exact `workspace_basename:tag`, for example
+`dataops:batching`. Reused/ambiguous names return409; use the listed Hub UUID.
+A Hub-created session's UUID can differ from its `binding.native_id`.
+
+Start sub-sessions through the Hub and pass the coordinator's **Hub session
+UUID** as `--parent`. The coordinator must supply this value and an authorized
+profile; do not guess it from a native tag or borrow a human login. Parent
+existence/ownership checks can refuse an unauthorized edge. External sessions
+honestly retain unknown/external ancestry. For example:
+
+```bash
+hub sessions start --machine MACHINE_ID --workspace /absolute/trusted/repo \
+  --engine ENGINE --headless --brief-file /local/task.txt --name child-task \
+  --parent PARENT_HUB_UUID --key UNIQUE_START_KEY --wait --timeout 180
+# Choose --interactive instead of --headless/--brief-file for an empty terminal.
+hub sessions send SESSION_UUID --body-file /local/message.txt \
+  --key UNIQUE_SEND_KEY --wait --timeout 90
+hub sessions capture SESSION_UUID --screen --key UNIQUE_CAPTURE_KEY --wait
+hub sessions stop SESSION_UUID --key UNIQUE_STOP_KEY --wait --timeout 90
+```
+
+The local brief/message files are uploaded by the CLI; workspace paths must
+be registered on the selected host. Keep engine/model quota admission and
+resource limits from the project policy. Never launch Grok workers under the
+current shared-limit hold. Inspect wait results: `acked` with a correlated
+`delivered` acknowledgement proves receipt, not task completion; `recorded`
+and `transported` alone do not. Stop requires confirmed terminal state. Retain
+keys and reuse identical payloads after uncertain responses. Read/list access
+does not authorize sending to or stopping somebody else's live session.
+
+The 17 October acceptance covered all34 then-current native UUIDs, both named
+external sessions, an owned external receiver's name-based send/capture/stop,
+and the authenticated sessions dashboard. Actual Google-account approval
+still belongs to the human; do not describe bootstrap-admin tests as theirs.
+
+
 aplexer is a session manager for long-running agent sessions (claude, codex, gemini, antigravity, grok, opencode, shell, ...) on a remote Linux machine. Each session has its own background worker (not tmux) and is addressed as `WORKSPACE:TAG`. PocketShell is the user's phone/desktop app that drives the same sessions. Use the `a` command (PocketShell wrapper around the `aplexer` binary; same subcommands).
 
 ## Setup
