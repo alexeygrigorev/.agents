@@ -149,6 +149,10 @@ Every run first ensures `~/.agents` points at this repo. Codex, OpenCode, and mo
 
 Since `.bashrc` is sourced from the repo, pulling updates is enough to get new aliases and functions. Re-run `./configure.sh` when target settings or symlinks change.
 
+## OpenCode V2 notes
+
+OpenCode V2 ships as the `@opencode/cli` npm package (`opencode-ai` was the discontinued v1). The OpenCode Go key is managed with `opencode auth login opencode`. V2 plugins must export a default definition (`export default { id, setup }`); the v1 named-export style fails plugin activation.
+
 ## Structure
 
 ```text

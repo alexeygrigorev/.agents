@@ -14,5 +14,7 @@
     "read": {
       "*": "allow"
     }
-  }
+  },
+  "model": "opencode-go/muse-spark-1.3-contributor",
+  "small_model": "opencode-go/muse-spark-1.3-contributor"
 }

@@ -34,6 +34,13 @@ else
     git clone "$REPO_URL" "$INSTALL_DIR"
 fi
 
+# Install OpenCode V2 (official package: @opencode/cli; the old
+# opencode-ai package is the discontinued v1).
+if command -v npm &>/dev/null; then
+    echo "Installing OpenCode V2 (@opencode/cli)..."
+    npm install -g @opencode/cli
+fi
+
 # Run configure
 cd "$INSTALL_DIR"
 ./configure.sh "${CONFIGURE_ARGS[@]}"
