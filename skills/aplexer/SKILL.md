@@ -101,7 +101,11 @@ ssh <host> 'a handoff WS:TAG'                    # transcript + screen + workspa
 ```
 
 ## Start a new session
-1. Pick workspace (repo dir or worktree), a short unique tag, and engine (`a engines` lists them; `a profiles` lists named profiles, use with `--profile`). If the user names an agent by a nickname, map it to the closest profile (e.g. a `z...` name to a `zcodex`/`zlaude` profile) and say which you used. The built-in engines already add each agent's skip-permissions flag (e.g. `antigravity` runs `agy --dangerously-skip-permissions`), so prefer `--engine X` / `--profile X` over a custom command. Check `pocketshell usage` for that agent's quota first.
+1. Pick workspace (repo dir or worktree), a short unique tag, and engine (`a engines` lists them; `a profiles` lists named profiles, use with `--profile`). If the user names an agent by a nickname, map it to the closest profile (e.g. a `z...` name to a `zcodex`/`zlaude` profile) and say which you used. The built-in engines already add each agent's skip-permissions flag (e.g. `antigravity` runs `agy --dangerously-skip-permissions`), so prefer `--engine X` / `--profile X` over a custom command. Check `pocketshell usage` for that agent's quota first. Separate accounts
+on one engine are profiles too: `--profile codex-orin` launches Codex as
+Orin's own ChatGPT account (its own `CODEX_HOME`, aplexer discovers the
+profile dir automatically), and `quse codex codex-orin` prints both
+accounts' 5h/weekly usage side by side.
 2. Without an initial prompt (simplest, then send one):
    ```bash
    ssh <host> 'a --json start --workspace ~/git/REPO --tag NAME --engine claude'

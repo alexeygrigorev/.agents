@@ -24,6 +24,8 @@ Targets:
             (prompts for a Z.AI API key; not included in 'all')
   godex     Configure an OpenCode Go-routed Codex profile under ~/.godex
             (prompts for an OpenCode Go API key; not included in 'all')
+  codex-orin  Configure a second-account Codex profile under ~/.codex-orin
+            (no key prompt; run the printed device-login command after)
   zcodex    Configure the zcodex Codex variant under ~/.zcodex
 EOF
 }
@@ -37,7 +39,7 @@ for arg in "$@"; do
             usage
             exit 0
             ;;
-    all|claude|codex|opencode|zlaude|zodex|godex|zcodex)
+    all|claude|codex|opencode|zlaude|zodex|godex|zcodex|codex-orin)
             TARGETS+=("$arg")
             ;;
         *)
@@ -238,6 +240,17 @@ wire_api = "zcode"
 EOF
     fi
     CODEX_HOME="$HOME/.zcodex" run_python "$REPO_DIR/scripts/setup_codex_config.py"
+fi
+
+if has_explicit_target codex-orin; then
+    # Orin's own ChatGPT account in a separate CODEX_HOME. No API key and
+    # no routing overrides are needed - the account itself is the
+    # difference, so this only creates the home and syncs the shared
+    # config into it. Login is interactive, so it is left to the operator:
+    #   CODEX_HOME="$HOME/.codex-orin" codex login --device-auth
+    mkdir -p "$HOME/.codex-orin"
+    CODEX_HOME="$HOME/.codex-orin" run_python "$REPO_DIR/scripts/setup_codex_config.py"
+    echo "Next: CODEX_HOME=\"\$HOME/.codex-orin\" codex login --device-auth"
 fi
 
 # Install CLI wrappers to ~/bin
