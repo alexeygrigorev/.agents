@@ -297,3 +297,29 @@ to record the notice first. Do not sequence them in a script that ignores the se
 
 End the handoff with changed files, commit/worktree, verification results, outstanding work and
 released/retained ownership. Keep a concise record in the existing issue or task document.
+
+## Hub work-claim (agent-hub repos: declare before editing)
+
+When the task lives in a Hub-tracked repo (Hub intake `d8c362c5`), every
+worker preflights and claims before mutating files, so operators see who is
+already on the task in `hub activity` / Fleet / Sessions views. Full rules:
+`docs/WORK-CLAIM.md` in the agent-hub checkout.
+
+```bash
+MAIN=/home/alexey/git/agent-hub   # canonical primary checkout, never the worktree
+a context --workspace "$MAIN" --json
+a message log --workspace "$MAIN" --json
+hub activity --project agent-hub
+a work join "$MAIN" --task "task:<uuid> | <summary>" --mode edit --paths src --paths docs
+# ... then work, then:
+# a message send --all --kind work.complete --data '<hub.work-claim.v1>' "..."
+a work leave "$MAIN"
+```
+
+Mailbox rule: `a work join` always targets the canonical primary checkout
+(`dirname $(git rev-parse --git-common-dir)`). Sender sessions write to
+their own record workspace mailbox even with `cwd`/env overrides, and a
+removed worktree deletes its mailbox — the host bridge scans related
+mailboxes, but local peers only see the canonical one. Observers use
+`--mode read`/`review` (never exclusive). No secrets on the bus: identifiers
+only, never tokens, env, diffs, or email bodies.
