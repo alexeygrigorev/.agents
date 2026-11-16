@@ -169,7 +169,7 @@ Every Docs edit points at a position, so the model of positions matters more tha
 - **Indexes are UTF-16 code units** counted from the start of a tab's body, which starts at index 1. A character outside the Basic Multilingual Plane, such as 🙂, counts as 2, and an emoji built from several characters counts as more: 👍🏽 (👍 plus a skin tone) is 4. Docs refuses an insert inside an emoji with "The insertion index cannot be within a grapheme cluster", and a delete through the middle of 🙂 with "Invalid deletion range". Every paragraph ends with a newline that occupies one index.
 - **Every insert or delete shifts everything after it.** Requests in one `update_doc` call run in order, so an index computed from the read is only valid for the first request that touches that region. Order the requests from the highest index to the lowest, and no request moves a position a later request relies on.
 - **Indexes go stale after any write.** Never reuse indexes from a read taken before your last write. Read again, then compute.
-- **Guard every index-based write with the revision.** Pass the `revisionId` from your read as `writeControl.requiredRevisionId`. If someone edited the doc in between, the whole batch is rejected with a 400 instead of landing in the wrong place. On that error, read again and recompute. Do not retry without the guard.
+- **Guard every batch with the revision, unless it is only `replaceAllText`.** Pass the `revisionId` from a read taken after your last write as `writeControl.requiredRevisionId`. If someone edited the doc in between, the whole batch is rejected with a 400 instead of landing in the wrong place. On that error, read again and recompute. Do not retry without the guard.
 - **Tabs are separate index spaces.** A doc can have several tabs, and child tabs under them. Every `location` and `range` takes a `tabId`; without it, the request applies to the first tab, which is a silent failure when the user meant another one. A pasted URL like `.../edit?tab=t.abc123` names the tab: `t.abc123` is the `tabId`. `replaceAllText` is the opposite: without `tabsCriteria` it changes every tab, child tabs included, and naming a parent tab in `tabsCriteria` does not include its child tabs.
 - **Pending suggestions are in the index space.** `read_doc` returns suggested insertions and deletions inline, as text runs that carry `suggestedInsertionIds` or `suggestedDeletionIds`, and they occupy real indexes. Don't treat a suggested deletion as live text, and don't insert inside one.
 - **The body's final newline can't be deleted.** To append, insert at the last element's `endIndex - 1`.
@@ -178,8 +178,8 @@ Every Docs edit points at a position, so the model of positions matters more tha
 
 There are two reads, and they serve different purposes.
 
-- **Drive `read_file_content`** returns the doc as Markdown: headings, tables, and bold, typically a few KB. Use it first to understand what the doc says and to find the text you'll anchor on. It is not the index space: it escapes Markdown characters, and it glues pending suggestions to the text around them. Never compute an index from it.
-- **Docs `read_doc`** returns the full `documents.get` JSON: every element with its `startIndex` and `endIndex`, every style, the `revisionId`, and the tabs. Use it when an edit needs indexes. It is large: a two-page doc with one table can exceed 100 KB. Pass `commentsIncluded: true` only when you need comments. The connector's read has come back without comments even with it set, showing `COMMENTS_VIEW_MODE_OMITTED`; if so, read them with Drive `read_file_content` and `includeComments: true`, or ask the user to paste the ones they want handled.
+- **Drive `read_file_content`** returns the doc as Markdown: headings, tables, and bold, typically a few KB. Use it first to understand what the doc says and to find the text you'll anchor on. Pass `includeComments: true`; without it, emoji come out garbled and the end of the text is cut off. With it, commented text sits inside `<comment_start id=…>` and `<comment_end id=…>` tags whose id matches a listed comment; keep the tags out of find text. It is not the index space: it escapes Markdown characters, and it glues pending suggestions to the text around them. Never compute an index from it.
+- **Docs `read_doc`** returns the full `documents.get` JSON: every element with its `startIndex` and `endIndex`, every style, the `revisionId`, and the tabs. Use it when an edit needs indexes. It is large: a two-page doc with one table can exceed 100 KB. Pass `commentsIncluded: true` only when you need comments; it has returned each comment with its place in the text. If the result shows `COMMENTS_VIEW_MODE_OMITTED` instead, read them with Drive `read_file_content` and `includeComments: true`, or ask the user to paste the ones they want handled.
 
 Where the content lives in the `read_doc` JSON:
 
@@ -225,7 +225,7 @@ outline and find print the `revisionId` and the tab ID; fill-table puts the `rev
 
 ## Edit recipes
 
-Each recipe is one `update_doc` call. Add `tabId` to every `location` and `range` when the doc has more than one tab, and add `writeControl: {"requiredRevisionId": ...}` to any call that uses indexes. Put real newlines in inserted text, not an escaped `\n`.
+Each recipe is one `update_doc` call. Add `tabId` to every `location` and `range` when the doc has more than one tab, and add `writeControl: {"requiredRevisionId": ...}` to every call except one made only of `replaceAllText` requests. Put real newlines in inserted text, not an escaped `\n`.
 
 **Change a word or phrase.** `replaceAllText` needs no read and no indexes:
 
@@ -261,7 +261,7 @@ Without the script, put the same requests in one batch: `insertTable` at index `
 
 To fill a table that already exists, a cell's text goes at its first paragraph's `startIndex`, which is the cell's own `startIndex + 1`; Google rejects an insert at the cell's `startIndex` ("The insertion index must be inside the bounds of an existing paragraph"). With a saved read, `fill-table` builds these requests; it assumes the cells are empty.
 
-**Change table structure.** `insertTableRow`, `deleteTableRow`, `insertTableColumn`, and `deleteTableColumn` take `tableCellLocation: {"tableStartLocation": {"index": <table startIndex>}, "rowIndex": r, "columnIndex": c}`. `updateTableCellStyle` sets cell backgrounds over a `tableRange` built from the same location plus `rowSpan` and `columnSpan`. Colors use `rgbColor` values from 0 to 1. A row inserted below a bold header row comes out bold, and a new column copies its neighbor's width and background. To delete a whole table, delete exactly `[table startIndex, table endIndex]`.
+**Change table structure.** `insertTableRow`, `deleteTableRow`, `insertTableColumn`, and `deleteTableColumn` take `tableCellLocation: {"tableStartLocation": {"index": <table startIndex>}, "rowIndex": r, "columnIndex": c}`. `updateTableCellStyle` sets cell backgrounds over a `tableRange` built from the same location plus `rowSpan` and `columnSpan`. Colors use `rgbColor` values from 0 to 1. A row inserted below a bold header row comes out bold, a new column copies its neighbor's width and background, and `unmergeTableCells` leaves all of the merged text in the first cell. To delete a whole table, delete exactly `[table startIndex, table endIndex]`.
 
 **Suggest instead of edit.** Add `"writeMode": "SUGGEST"` to `writeControl`, and the same requests land as tracked suggestions that the doc's owner can accept or reject. Use it when the user asks for suggestions, redlines, tracked changes, or a review, or when the doc belongs to someone else and the user wants to propose rather than change. You can't accept or reject suggestions through the API, so tell the user they're waiting in the doc. Before you tell them, read the doc again with `read_doc` and run `outline`: inserted and deleted text should show as `[+...]` or `[-...]` (outline doesn't show suggested formatting changes). If new text shows as plain text, or deleted text is gone instead of showing as `[-...]`, the change was made directly; say so, and don't call it a suggestion. Suggested deletions stay in the index space until someone resolves them; see "How a doc is addressed". The connector has answered this mode with "Unsupported WriteControl mode". If it does, make no direct edits in its place: tell the user suggestions aren't available, and offer to list the proposed changes in your reply or to edit directly.
 
@@ -272,9 +272,11 @@ To fill a table that already exists, a cell's text goes at its first paragraph's
 
 **Tabs.** `addDocumentTab` with `tabProperties.title` creates a tab, and the reply holds its `tabId`. `updateDocumentTabProperties` renames one (`fields: "title"`), and `deleteTab` removes one along with its child tabs, but not the only tab. Set `tabProperties.parentTabId` to create a child tab; tabs nest at most three levels deep. A new tab starts with one empty paragraph, so its first insert index is 1.
 
+**Add a footnote.** `createFootnote` returns the footnote's ID; the new footnote holds a single space. In the next call, add your text with `insertText` and `endOfSegmentLocation: {"segmentId": "<footnote ID>"}`, then delete the space with `deleteContentRange` over `{"segmentId": "<footnote ID>", "startIndex": 0, "endIndex": 1}`. Drive's text read leaves footnote text out; check it with `read_doc`.
+
 ## Verify
 
-- For content, read with Drive `read_file_content` and check the text you changed.
+- For content, read with Drive `read_file_content` and `includeComments: true`, and check the text you changed.
 - For positions and styles, read with `read_doc` and run `outline` or `find` on the result. `find` shows whether replaced text picked up bold, and whether a match sits in a pending suggestion.
 - For layout, where you can run code, export with Drive `download_file_content` and `exportMimeType: "application/pdf"`, then run `python <skill>/scripts/render_export.py <saved export> <out dir>` and check the page images against the list under "Check the result" above. If the export comes back in the chat instead of being saved to a file, skip the render rather than copying it into a file. If you can't run code, skipped the render, or it failed, rely on the two checks above and tell the user you couldn't check the layout visually.
 
@@ -285,7 +287,7 @@ To fill a table that already exists, a cell's text goes at its first paragraph's
 | `read_doc` result too large or cut off | Full document JSON for a long or table-heavy doc | Orient with Drive `read_file_content`. Use `replaceAllText` where the find text matches only the text you mean to change (add neighboring words until it does). If the result was saved to a file, run `docs_index.py` on it. |
 | An edit landed in the wrong tab | No `tabId` in the location or range | Add the `tabId` from the read or from the URL's `?tab=` value. |
 | `replaceAllText` changed other tabs | No `tabsCriteria` | Scope it with `tabsCriteria.tabIds`. |
-| `replaceAllText` reports 0 occurrences | Find text copied from `read_file_content`, which escapes `&`, `*`, and similar characters, or glues suggestions | Use the literal text, or check it with `docs_index.py find`. |
+| `replaceAllText` reports 0 occurrences | Find text copied from `read_file_content`, which escapes `&`, `*`, and similar characters, tags commented text, or glues suggestions | Use the literal text, or check it with `docs_index.py find`. |
 | Text shows as "RBRunning back" | A pending suggestion read as plain text | Read with `read_doc`. `outline` marks suggested text as `[+...]` and `[-...]`. |
 | A heading loses its bold after an edit | A style reset was applied to the heading | Reset styles only on body text. |
 | Replaced text turned bold | The replacement inherited the style of the first replaced character | Clear it with `updateTextStyle` over the new range. |

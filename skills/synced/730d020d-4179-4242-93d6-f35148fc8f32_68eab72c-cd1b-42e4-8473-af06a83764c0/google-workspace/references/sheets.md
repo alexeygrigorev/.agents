@@ -218,7 +218,7 @@ Sheet1!D7   '=D5/0'        -> '#DIV/0!'  <-- ERROR DIVIDE_BY_ZERO
 errors: 1
 ```
 
-Add `--errors-only` to list only the error cells. Add `sheets.data.rowData.values.userEnteredFormat` to the fields when you need to read formatting, and keep the range tight: grid reads grow fast.
+Add `--errors-only` to list only the error cells. Add `sheets.data.rowData.values.userEnteredFormat` to the fields when you need to read formatting, and keep the range tight: grid reads grow fast. `get_values` shows only a link's label. For the URL, add `sheets.data.rowData.values.hyperlink` to the fields and read it from the JSON, since `cells` doesn't print it. A cell with several links has no `hyperlink`; read `textFormatRuns` for those.
 
 ## Write values and formulas
 
@@ -233,7 +233,7 @@ Add `--errors-only` to list only the error cells. Add `sheets.data.rowData.value
 
 ## Batch updates: structure, formatting, charts
 
-`update_spreadsheet` sends raw `spreadsheets.batchUpdate` requests. The reads in this file return no `revisionId`, so send these requests without `writeControl`, and read again right before a write that depends on positions.
+`update_spreadsheet` sends raw `spreadsheets.batchUpdate` requests. `get_spreadsheet` returns a `revisionId` even with a field mask, but don't send it: send these requests without `writeControl`, and read again right before a write that depends on positions.
 
 - **Field masks inside requests have the same rule:** comma-separated full paths, no parentheses. `"fields": "userEnteredFormat.numberFormat,userEnteredFormat.textFormat.foregroundColor"` works; `"userEnteredFormat(numberFormat,textFormat)"` is rejected.
 - **Colors are `red`, `green`, `blue` from 0 to 1**, not hex.
