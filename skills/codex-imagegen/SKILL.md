@@ -45,12 +45,27 @@ In plain language, this is Luna Max. Every delegated image job must include both
 
 Never use `gpt-5.6-sol`, `gpt-6-sol`, the user's default model, or an unverified model alias for this skill. If Luna is unavailable, stop and report that exact failure; do not silently downgrade to Sol or another model. The image model itself remains Codex's built-in image tool, not the OpenAI image API.
 
-## Non-interactive delegation
+## CODEX_HOME: force the authenticated home
 
-Codex must run with `codex exec`, never with an interactive `codex` process. Run the command in the background with an explicit timeout and capture a short final summary separately from the full log:
+Two Codex homes exist on this machine, and the ambient environment may already carry the wrong one:
+
+- `$HOME/.zcodex` — the development home of the `zcodex` fork. It has **no `auth.json`**, and its `config.toml` selects the fork's own model provider. A delegated `codex exec` started with this home fails with an authentication/provider error before any image call.
+- `$HOME/.codex` — the real, authenticated home. The built-in imagegen tool works here (verified 2026-10-03 during the OpenScan branding round; the default env failed first).
+
+The shell may export `CODEX_HOME=$HOME/.zcodex` from the agent harness even though no shell profile sets it — check `echo "$CODEX_HOME"` before assuming. Always force the home per invocation (prefix shown in the delegation command below):
 
 ```bash
-timeout 30m codex exec \
+test -f "$HOME/.codex/auth.json" || { echo "codex auth missing" >&2; exit 1; }
+```
+
+Do not copy `auth.json` into `~/.zcodex` and do not edit the fork's provider config to work around this; simply run this skill against `~/.codex`. Failure signature to recognize: the delegated log shows an auth or `model_provider` error, no image file is produced, and `CODEX_HOME` resolved to `~/.zcodex`.
+
+## Non-interactive delegation
+
+Codex must run with `codex exec`, never with an interactive `codex` process. Run the command in the background with an explicit timeout and capture a short final summary separately from the full log. Note the `CODEX_HOME` prefix — see the previous section:
+
+```bash
+CODEX_HOME="$HOME/.codex" timeout 30m codex exec \
   -C "$PROJECT_ROOT" \
   --sandbox workspace-write \
   -c model="gpt-5.6-luna" \
@@ -131,8 +146,10 @@ Prefer native alpha when the built-in tool returns it. Inspect the image channel
 
 For a genuine flat key, use the installed helper:
 
+On this machine the helper script is installed only under the zcodex home, so once `CODEX_HOME` is forced to `~/.codex` as required above, the `${CODEX_HOME}/skills/...` expansion no longer resolves. Invoke the helper by its absolute path instead:
+
 ```bash
-python "${CODEX_HOME:-$HOME/.codex}/skills/.system/imagegen/scripts/remove_chroma_key.py" \
+python "$HOME/.zcodex/skills/.system/imagegen/scripts/remove_chroma_key.py" \
   --input "$SOURCE_IMAGE" \
   --out "$FINAL_IMAGE" \
   --auto-key border \
@@ -223,6 +240,7 @@ Never print credentials, full environment files, authentication headers, or priv
 ## Failure handling
 
 - **Luna unavailable:** report the exact model error and stop; do not use Sol.
+- **Auth or provider error before any image call:** `CODEX_HOME` almost certainly resolved to `~/.zcodex` (the zcodex dev home, no `auth.json`). Rerun with `CODEX_HOME="$HOME/.codex"`; never move or edit auth files as a workaround.
 - **Built-in image tool unavailable:** report that the local imagegen tool is unavailable and ask before any API-key fallback.
 - **Chroma removal unavailable:** retain the raw source, explain the Pillow/uv dependency issue, and do not claim transparency was validated.
 - **Wrong frame count or layout:** inspect the actual image, adjust the consumer to the verified layout, or regenerate with a narrower prompt.
