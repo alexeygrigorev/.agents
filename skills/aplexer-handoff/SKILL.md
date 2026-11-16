@@ -35,7 +35,7 @@ aplexer list           # existing sessions per workspace; pick an unused tag
 ```
 
 - The tag must be unique in the workspace (e.g. `release2`). `aplexer list` groups by workspace.
-- Engine default flags already add the skip-permissions argv (`--dangerously-bypass-approvals-and-sandbox` for Codex, `--dangerously-skip-permissions` for Claude). Pass `--no-skip-permissions` only if the user wants prompts.
+- Engine default flags already add the skip-permissions argv (`--dangerously-bypass-approvals-and-sandbox` for Codex, `--dangerously-skip-permissions` for Claude, `--auto` for opencode). Pass `--no-skip-permissions` only if the user wants prompts.
 - **Models:** don't hardcode a model the account may not serve. On 2026-10-01, `codex -m gpt-5.6` failed in the TUI with `The 'gpt-5.6' model is not supported when using Codex with a ChatGPT account`. The account default (`~/.codex/config.toml`, `model = ...`) worked. If the repo's AGENTS.md pins a model, try it, then fall back to the account default and tell the user.
 
 ## 3. Start the successor in the same workspace
@@ -45,6 +45,7 @@ Plain engine:
 ```bash
 aplexer start --workspace /path/to/repo --tag release2 --engine codex
 aplexer start --workspace /path/to/repo --tag release2 --engine claude
+aplexer start --workspace /path/to/repo --tag release2 --engine opencode
 aplexer start --workspace /path/to/repo --tag release2 --engine codex --profile zodex
 ```
 
@@ -61,6 +62,13 @@ aplexer start --workspace /path/to/repo --tag release2 --engine claude -- \
   "$(command -v claude)" --model opus --dangerously-skip-permissions
 ```
 
+```bash
+aplexer start --workspace /path/to/repo --tag release2 --engine opencode -- \
+  "$(command -v opencode)" --auto
+```
+
+opencode v2 has no top-level `--model` flag (the model comes from `opencode.json`), so don't use aplexer's `--model` with `--engine opencode`.
+
 To replace a failed start: `aplexer kill /path/to/repo:release2`, then start again.
 
 ## 4. Confirm it booted
@@ -70,7 +78,7 @@ aplexer status /path/to/repo:release2          # state: running, worker_alive: t
 aplexer capture /path/to/repo:release2 --screen --plain | grep -v '^\s*$' | tail -8
 ```
 
-Wait until the screen shows the idle prompt (`› Ask Codex to do anything` for Codex, or Claude's input box) and the model line. Fix any error shown before sending work.
+Wait until the screen shows the idle prompt (`› Ask Codex to do anything` for Codex, Claude's input box, or opencode's `Ask anything…` input box under the OPENCODE logo with the `Build auto · <model>` line) and the model line. Fix any error shown before sending work.
 
 ## 5. Send the takeover prompt
 
