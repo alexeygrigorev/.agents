@@ -185,11 +185,13 @@ ensure_agents_dir
 
 if has_target claude; then
     link_shared_dirs "$HOME/.claude"
+    ensure_symlink "$REPO_DIR/instructions/global.md" "$HOME/.claude/CLAUDE.md"
     run_python "$REPO_DIR/scripts/setup_settings.py"
 fi
 
 if has_target opencode; then
     mkdir -p "$HOME/.config/opencode"
+    ensure_symlink "$REPO_DIR/instructions/global.md" "$HOME/.config/opencode/AGENTS.md"
     remove_repo_skills_link "$HOME/.config/opencode"
     remove_managed_commands "$HOME/.config/opencode"
     run_python "$REPO_DIR/scripts/setup_opencode_config.py"
@@ -197,6 +199,7 @@ fi
 
 if has_target codex; then
     mkdir -p "$HOME/.codex"
+    ensure_symlink "$REPO_DIR/instructions/global.md" "$HOME/.codex/AGENTS.md"
     run_python "$REPO_DIR/scripts/setup_codex_config.py"
 fi
 
